@@ -4,628 +4,764 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CampusPrep — AI Interview Simulator</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..800;1,6..72,300..800&family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-:root{
-  --bg:#0a0a0c;--s1:#111114;--s2:#18181c;--s3:#222228;
-  --border:#28282f;--border2:#36363f;
-  --text:#ededf2;--muted:#55556a;--muted2:#8888a0;
-  --tech:#6366f1;--tech-dim:rgba(99,102,241,0.1);--tech-border:rgba(99,102,241,0.25);
-  --hr:#f59e0b;--hr-dim:rgba(245,158,11,0.08);--hr-border:rgba(245,158,11,0.25);
-  --green:#22c55e;--green-dim:rgba(34,197,94,0.08);
-  --orange:#f97316;--red:#ef4444;--red-dim:rgba(239,68,68,0.08);
-  --warn:#fbbf24;
-  --easy:#22c55e;--med:#f59e0b;--hard:#ef4444;
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#874d33',
+        'primary-container': '#a46549',
+        'primary-fixed': '#ffdbcd',
+        'primary-fixed-dim': '#ffb597',
+        'on-primary': '#ffffff',
+        'on-primary-container': '#fffbff',
+        secondary: '#536253',
+        'secondary-container': '#d3e4d1',
+        'on-secondary': '#ffffff',
+        'on-secondary-container': '#576757',
+        tertiary: '#166664',
+        'tertiary-container': '#37807d',
+        background: '#fcf9f4',
+        surface: '#fcf9f4',
+        'surface-dim': '#dcdad5',
+        'surface-bright': '#fcf9f4',
+        'surface-container-lowest': '#ffffff',
+        'surface-container-low': '#f6f3ee',
+        'surface-container': '#f0ede8',
+        'surface-container-high': '#ebe8e3',
+        'surface-container-highest': '#e5e2dd',
+        'on-surface': '#1c1c19',
+        'on-surface-variant': '#53443e',
+        outline: '#85736d',
+        'outline-variant': '#d8c2ba',
+        error: '#ba1a1a',
+        'error-container': '#ffdad6',
+        'inverse-surface': '#31302d',
+        'inverse-on-surface': '#f3f0eb',
+        'inverse-primary': '#ffb597',
+      },
+      fontFamily: {
+        serif: ['Newsreader', 'serif'],
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      borderRadius: {
+        DEFAULT: '1rem',
+        lg: '2rem',
+        xl: '3rem',
+        full: '9999px',
+      },
+    }
+  }
 }
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Plus Jakarta Sans',sans-serif; background-color:#fcf9f4; color:#1c1c19; -webkit-font-smoothing:antialiased; }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; vertical-align:middle; }
+.ms-fill { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+.screen { display:none; min-height:100vh; }
+.screen.active { display:block; }
+.screen.flex-screen { display:none; flex-direction:column; }
+.screen.flex-screen.active { display:flex; }
 
-/* ══ SETUP ══ */
-.setup{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
-@media(max-width:760px){.setup{grid-template-columns:1fr}.setup-left{display:none}}
-.setup-left{background:linear-gradient(150deg,#13132a,#0e0e1e 60%,#0a0a12);padding:56px 48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
-.setup-left::before{content:'';position:absolute;top:-80px;right:-80px;width:360px;height:360px;background:radial-gradient(circle,rgba(99,102,241,0.18) 0%,transparent 65%);pointer-events:none}
-.setup-left::after{content:'';position:absolute;bottom:-60px;left:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(245,158,11,0.1) 0%,transparent 65%);pointer-events:none}
-.sl-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px;position:relative;z-index:1}
-.sl-dot{width:8px;height:8px;border-radius:50%;background:var(--tech);box-shadow:0 0 10px var(--tech)}
-.sl-hero{position:relative;z-index:1}
-.sl-tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--tech);text-transform:uppercase;margin-bottom:18px;opacity:.8}
-.sl-title{font-family:'Playfair Display',serif;font-size:clamp(34px,3.5vw,50px);line-height:1.1;letter-spacing:-1px;margin-bottom:18px}
-.sl-title em{font-style:italic;color:var(--tech)}
-.sl-desc{font-size:14px;color:var(--muted2);line-height:1.7;font-weight:300;max-width:360px}
-.sl-feats{display:flex;flex-direction:column;gap:10px;position:relative;z-index:1}
-.sl-feat{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted2)}
-.sl-feat-icon{width:30px;height:30px;border-radius:7px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+/* Animations */
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+@keyframes wave { 0%,60%,100%{transform:scaleY(0.4)} 30%{transform:scaleY(1)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(186,26,26,0.3)} 50%{box-shadow:0 0 0 10px rgba(186,26,26,0)} }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
-.setup-right{padding:40px 36px 40px;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding-top:48px}
-.sf{width:100%;max-width:420px;animation:slideUp .5s ease both}
-.sf-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:4px;letter-spacing:-.5px}
-.sf-sub{font-size:13px;color:var(--muted2);margin-bottom:24px;font-weight:300}
+.fade-up { animation: fadeUp 0.6s ease both; }
+.fade-up-2 { animation: fadeUp 0.6s ease 0.1s both; }
+.fade-up-3 { animation: fadeUp 0.6s ease 0.2s both; }
+.fade-up-4 { animation: fadeUp 0.6s ease 0.3s both; }
 
-.field{margin-bottom:14px}
-.fl{font-size:10px;font-weight:600;color:var(--muted2);margin-bottom:6px;letter-spacing:.8px;text-transform:uppercase;display:flex;justify-content:space-between}
-.fr{color:var(--tech);font-size:9px}
-.fi,.fs{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s;appearance:none}
-.fi:focus,.fs:focus{border-color:var(--tech);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-.fi::placeholder{color:var(--muted)}
-.fs{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23666' d='M5 6L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;cursor:pointer}
-.fs option{background:#18181c}
+/* Timer ring */
+.timer-ring-fill { stroke-dasharray: 126; stroke-dashoffset: 0; transition: stroke-dashoffset 0.5s linear, stroke 0.5s; transform-origin: center; transform: rotate(-90deg); }
 
-/* Personality selector */
-.personality-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:2px}
-.pers-btn{padding:10px 8px;border-radius:9px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--s2);color:var(--muted2);transition:all .2s;text-align:center;font-family:'DM Sans',sans-serif}
-.pers-btn .pb-icon{font-size:18px;display:block;margin-bottom:3px}
-.pers-btn.sel-easy{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4);color:var(--easy)}
-.pers-btn.sel-medium{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.4);color:var(--med)}
-.pers-btn.sel-hard{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:var(--hard)}
+/* Voice transcript */
+.voice-box { min-height: 44px; }
+.interim-text { color: #85736d; font-style: italic; }
 
-.q-row{display:flex;align-items:center;gap:12px}
-.q-num{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--tech);min-width:28px;text-align:center}
-.q-slider{flex:1;-webkit-appearance:none;height:3px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
-.q-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--tech);cursor:pointer;box-shadow:0 0 8px rgba(99,102,241,.5)}
-.q-range{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:3px}
+/* Violation banner */
+.vbanner { display:none; }
+.vbanner.show { display:block; }
 
-.rzone{border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--s2)}
-.rzone:hover{border-color:var(--tech);background:var(--tech-dim)}
-.rzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.rz-icon{font-size:20px;margin-bottom:5px}
-.rz-text{font-size:12px;color:var(--muted2);font-weight:500}
-.rz-sub{font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace}
-.rz-done{display:none;align-items:center;justify-content:center;gap:6px;color:var(--green);font-size:12px;font-weight:600}
-.rz-done.show{display:flex}
+/* Wave bars */
+.wave-bar { width:3px; border-radius:2px; background:#22c55e; animation: wave 0.8s ease-in-out infinite; }
+.wave-bar:nth-child(2) { animation-delay:0.1s; height:10px; }
+.wave-bar:nth-child(3) { animation-delay:0.2s; height:16px; }
+.wave-bar:nth-child(4) { animation-delay:0.15s; height:8px; }
+.wave-bar:nth-child(5) { animation-delay:0.05s; height:12px; }
 
-.pnotice{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:9px;padding:10px 13px;margin-bottom:14px;font-size:11px;color:var(--warn);line-height:1.5}
-.pnotice strong{display:block;margin-bottom:2px;font-size:10px;letter-spacing:.5px;text-transform:uppercase}
+/* Progress bar fill */
+.prog-fill { height:100%; border-radius:9999px; transition: width 0.8s ease; }
 
-.rounds-row{display:flex;gap:8px;margin-bottom:18px}
-.rp{flex:1;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:600;text-align:center;border:1px solid}
-.rp.tech{background:var(--tech-dim);color:var(--tech);border-color:var(--tech-border)}
-.rp.hr{background:var(--hr-dim);color:var(--hr);border-color:var(--hr-border)}
+/* Dot progress */
+.qdot { width:8px; height:8px; border-radius:50%; background:#d8c2ba; transition:all 0.3s; }
+.qdot.done { background:#22c55e; }
+.qdot.active { background:#874d33; box-shadow:0 0 6px rgba(135,77,51,0.5); }
 
-.go-btn{width:100%;padding:14px;background:var(--tech);color:white;border:none;border-radius:11px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
-.go-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08) 0%,transparent 60%)}
-.go-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 28px rgba(99,102,241,.35)}
-.go-btn:disabled{opacity:.5;cursor:not-allowed}
-.go-btn .spin{display:none}
-.go-btn.loading .txt{display:none}
-.go-btn.loading .spin{display:inline}
-
-/* ══ PRECHECK ══ */
-.precheck{display:none;min-height:100vh;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;padding:40px}
-.precheck.show{display:flex}
-.pcc{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:36px;max-width:480px;width:100%;text-align:center}
-.pcc-icon{font-size:44px;margin-bottom:14px}
-.pcc-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:7px;letter-spacing:-.5px}
-.pcc-sub{font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:24px;font-weight:300}
-.rules{text-align:left;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px 18px;margin-bottom:20px;display:flex;flex-direction:column;gap:8px}
-.rule{display:flex;align-items:flex-start;gap:9px;font-size:12px;color:var(--muted2);line-height:1.5}
-.rdot{width:5px;height:5px;border-radius:50%;background:var(--warn);flex-shrink:0;margin-top:5px}
-.cam-wrap{width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000;margin-bottom:16px;position:relative;border:2px solid var(--border)}
-.cam-wrap video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-.cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--s2)}
-.cam-overlay-icon{font-size:28px}
-.cam-overlay-txt{font-size:11px;color:var(--muted2)}
-.pcam-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted2);padding:8px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;cursor:pointer;transition:all .2s;margin-bottom:14px}
-.pcam-btn:hover{border-color:var(--tech);color:var(--tech)}
-.pcam-btn.on{background:var(--green-dim);border-color:rgba(34,197,94,.3);color:var(--green)}
-.fs-btn{width:100%;padding:13px;background:var(--tech);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s}
-.fs-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(99,102,241,.3)}
-.fs-btn:disabled{opacity:.5;cursor:not-allowed}
-
-/* ══ INTERVIEW ══ */
-.iv{display:none;height:100vh;flex-direction:column;background:var(--bg)}
-.iv.show{display:flex}
-
-.iv-bar{height:52px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px;flex-shrink:0;gap:12px}
-.iv-logo{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;flex-shrink:0}
-.rb{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid;flex-shrink:0}
-.rb.tech{background:var(--tech-dim);color:var(--tech);border-color:var(--tech-border)}
-.rb.hr{background:var(--hr-dim);color:var(--hr);border-color:var(--hr-border)}
-.rb-dot{width:4px;height:4px;border-radius:50%;background:currentColor;animation:pulse 1.5s infinite}
-
-.qdots-bar{display:flex;gap:4px;align-items:center}
-.qdot{width:7px;height:7px;border-radius:50%;background:var(--border2);transition:all .3s}
-.qdot.done{background:var(--green)}
-.qdot.active{background:var(--tech);box-shadow:0 0 5px var(--tech)}
-.qdot.skipped{background:var(--orange)}
-
-.nav-timer{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted2);flex-shrink:0}
-.nav-timer.warn{color:var(--orange)}
-
-.vbanner{display:none;background:rgba(239,68,68,.12);border-bottom:1px solid rgba(239,68,68,.3);padding:8px 18px;text-align:center;font-size:11px;color:var(--red);font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;flex-shrink:0}
-.vbanner.show{display:block}
-
-.iv-main{flex:1;display:grid;grid-template-columns:1fr 300px;overflow:hidden}
-@media(max-width:860px){.iv-main{grid-template-columns:1fr}.iv-sidebar{display:none}}
-
-/* Video area */
-.iv-video{display:flex;flex-direction:column;overflow:hidden}
-.cams{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px;min-height:0}
-
-.cam-card{border-radius:12px;overflow:hidden;background:#000;position:relative;border:2px solid var(--border)}
-.cam-card.ivr{border-color:var(--tech-border)}
-.cam-card.cand{border-color:var(--border2)}
-
-.ai-visual{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e);gap:10px}
-.ai-emoji{font-size:56px;animation:breathe 3s ease-in-out infinite}
-@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
-.ai-wave{display:flex;gap:3px;align-items:center;height:16px}
-.wbar{width:3px;border-radius:2px;background:var(--green);animation:wa .8s ease-in-out infinite}
-.wbar:nth-child(2){animation-delay:.1s;height:10px}
-.wbar:nth-child(3){animation-delay:.2s;height:14px}
-.wbar:nth-child(4){animation-delay:.15s;height:8px}
-.wbar:nth-child(5){animation-delay:.05s;height:12px}
-@keyframes wa{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
-.ai-nametag{font-size:12px;font-weight:600;color:rgba(255,255,255,.75);background:rgba(0,0,0,.4);padding:3px 10px;border-radius:20px}
-
-.cam-vid{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-.cam-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:var(--s2)}
-.cam-ph-icon{font-size:26px;opacity:.4}
-.cam-ph-txt{font-size:10px;color:var(--muted);text-align:center;padding:0 10px}
-.cam-label{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);padding:2px 9px;border-radius:20px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.75)}
-.cam-status-dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
-.no-face{position:absolute;top:8px;left:8px;background:rgba(239,68,68,.85);padding:2px 9px;border-radius:5px;font-size:9px;font-weight:600;color:white;display:none}
-.no-face.show{display:block}
-
-/* Question + timer */
-.q-section{background:var(--s1);border-top:1px solid var(--border);padding:12px 18px;flex-shrink:0;display:flex;align-items:flex-start;gap:14px}
-
-/* Circular countdown timer */
-.q-timer{flex-shrink:0;position:relative;width:48px;height:48px}
-.q-timer svg{transform:rotate(-90deg)}
-.q-timer-track{fill:none;stroke:var(--border2);stroke-width:4}
-.q-timer-fill{fill:none;stroke:var(--tech);stroke-width:4;stroke-linecap:round;stroke-dasharray:126;stroke-dashoffset:0;transition:stroke-dashoffset .5s linear,stroke .5s}
-.q-timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--text)}
-.q-timer-num.warn{color:var(--orange)}
-.q-timer-num.crit{color:var(--red)}
-
-.q-content{flex:1}
-.q-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.q-txt{font-size:14px;line-height:1.55;color:var(--text);font-style:italic}
-
-/* Input */
-.iv-input{border-top:1px solid var(--border);padding:10px 18px 12px;background:var(--s1);flex-shrink:0}
-.mode-row{display:flex;gap:6px;margin-bottom:8px}
-.mmode{flex:1;padding:6px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted2);transition:all .2s;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px}
-.mmode.on{background:var(--tech-dim);border-color:var(--tech-border);color:var(--tech)}
-.mmode:disabled{opacity:.4;cursor:not-allowed}
-.txt-row{display:flex;gap:7px;align-items:flex-end}
-.ans-ta{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;resize:none;min-height:42px;max-height:100px;transition:border-color .2s;line-height:1.5}
-.ans-ta:focus{border-color:var(--tech)}
-.ans-ta::placeholder{color:var(--muted)}
-.ans-ta:disabled{opacity:.4;cursor:not-allowed}
-.send-b{width:38px;height:38px;background:var(--tech);color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.send-b:hover:not(:disabled){background:#4f52d0;transform:translateY(-1px)}
-.send-b:disabled{opacity:.3;cursor:not-allowed}
-
-/* Voice input — improved */
-.voice-area{display:flex;flex-direction:column;align-items:center;gap:7px}
-.voice-top{display:flex;align-items:center;gap:12px;width:100%}
-.mic-b{width:48px;height:48px;border-radius:50%;border:2px solid var(--border);background:var(--s2);font-size:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.mic-b.rec{background:var(--red-dim);border-color:var(--red);animation:micPulse 1s infinite}
-.mic-b:disabled{opacity:.3;cursor:not-allowed}
-.voice-transcript-box{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-height:38px;font-size:12px;color:var(--text);line-height:1.5;position:relative}
-.voice-transcript-box .interim{color:var(--muted2);font-style:italic}
-.voice-transcript-box .final{color:var(--text)}
-.voice-hint{font-size:10px;color:var(--muted);font-style:italic}
-.voice-bottom{display:flex;gap:8px;justify-content:flex-end;width:100%}
-.vsend{background:var(--tech);color:white;border:none;padding:7px 16px;border-radius:7px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;cursor:pointer;display:none}
-.vsend.show{display:block}
-.vclear{background:none;border:1px solid var(--border);color:var(--muted2);padding:7px 12px;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;display:none}
-.vclear.show{display:block}
-
-.hint{font-size:9px;color:var(--muted);margin-top:5px;font-family:'JetBrains Mono',monospace;text-align:center}
-
-/* ══ SIDEBAR ══ */
-.iv-sidebar{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--s1)}
-.sb{padding:12px 14px;border-bottom:1px solid var(--border)}
-.sb-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-
-.vlog{display:flex;flex-direction:column;gap:4px}
-.vlog-item{font-size:10px;color:var(--muted2);padding:4px 7px;background:var(--s2);border-radius:5px;border-left:2px solid var(--border2);font-family:'JetBrains Mono',monospace}
-.vlog-item.warn{border-left-color:var(--warn);color:var(--warn)}
-.vlog-item.crit{border-left-color:var(--red);color:var(--red)}
-
-.face-pills{display:flex;gap:5px}
-.fpill{flex:1;text-align:center;padding:5px 3px;border-radius:6px;font-size:9px;font-weight:600;background:var(--s2);border:1px solid var(--border2)}
-.fpill.high{background:var(--green-dim);border-color:rgba(34,197,94,.2);color:var(--green)}
-.fpill.mid{background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2);color:var(--orange)}
-.fpill.low{background:var(--red-dim);border-color:rgba(239,68,68,.2);color:var(--red)}
-.fpill-n{font-family:'JetBrains Mono',monospace;font-size:14px;display:block;line-height:1;margin-bottom:1px}
-.fpill-l{font-size:8px;color:var(--muted);letter-spacing:.3px}
-
-.sc-circ{width:60px;height:60px;border-radius:50%;border:2.5px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 10px;transition:all .5s}
-.sc-circ.high{border-color:var(--green);background:var(--green-dim)}
-.sc-circ.mid{border-color:var(--orange);background:rgba(249,115,22,.06)}
-.sc-circ.low{border-color:var(--red);background:var(--red-dim)}
-.sc-n{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;line-height:1}
-.sc-circ.high .sc-n{color:var(--green)}
-.sc-circ.mid .sc-n{color:var(--orange)}
-.sc-circ.low .sc-n{color:var(--red)}
-.sc-s{font-size:7px;color:var(--muted);font-family:'JetBrains Mono',monospace}
-
-.dim-bars{display:flex;flex-direction:column;gap:7px}
-.dim-top{display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px}
-.dim-name{color:var(--muted2)}
-.dim-val{font-family:'JetBrains Mono',monospace;color:var(--text)}
-.dim-bg{height:2px;background:var(--s3);border-radius:2px;overflow:hidden}
-.dim-fill{height:100%;border-radius:2px;background:var(--tech);transition:width .8s ease}
-.dim-fill.high{background:var(--green)}
-.dim-fill.mid{background:var(--orange)}
-.dim-fill.low{background:var(--red)}
-
-.fb-items{display:flex;flex-direction:column;gap:4px}
-.fb-item{font-size:10px;color:var(--muted2);line-height:1.5;padding:5px 7px;background:var(--s2);border-radius:5px;border-left:2px solid var(--border2);font-weight:300}
-.fb-item.good{border-left-color:var(--green)}
-.fb-item.bad{border-left-color:var(--orange)}
-
-.break-card{background:var(--s2);border:1px solid var(--hr-border);border-radius:11px;padding:18px;text-align:center;margin:10px 14px}
-.break-emoji{font-size:22px;margin-bottom:7px}
-.break-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:3px}
-.break-sub{font-size:11px;color:var(--muted2);margin-bottom:11px;font-weight:300}
-.break-btn{background:var(--hr);color:#000;border:none;padding:8px 18px;border-radius:7px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;cursor:pointer;transition:all .2s}
-.break-btn:hover{opacity:.85}
-
-/* ══ REPORT ══ */
-.report{display:none;min-height:100vh;background:var(--bg);padding:56px 20px 80px;animation:slideUp .5s ease both}
-.report.show{display:block}
-.rep-wrap{max-width:800px;margin:0 auto}
-.rep-tag{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--tech);border:1px solid var(--tech-border);background:var(--tech-dim);padding:4px 11px;border-radius:10px;margin-bottom:18px}
-.rep-title{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,44px);line-height:1.05;letter-spacing:-1.5px;margin-bottom:32px}
-.rep-title span{color:var(--tech);font-style:italic}
-
-.verdict{border-radius:13px;padding:22px 26px;margin-bottom:24px;display:flex;align-items:center;gap:14px}
-.verdict.hire{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.03));border:1px solid rgba(34,197,94,.22)}
-.verdict.maybe{background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(249,115,22,.03));border:1px solid rgba(249,115,22,.22)}
-.verdict.no{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(239,68,68,.02));border:1px solid rgba(239,68,68,.18)}
-.verdict-icon{font-size:30px;flex-shrink:0}
-.verdict-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:2px}
-.verdict.hire .verdict-name{color:var(--green)}
-.verdict.maybe .verdict-name{color:var(--orange)}
-.verdict.no .verdict-name{color:var(--red)}
-.verdict-desc{font-size:12px;color:var(--muted2);font-weight:300}
-
-/* Score grid */
-.r-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:24px}
-@media(max-width:560px){.r-grid{grid-template-columns:repeat(2,1fr)}}
-.r-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:15px;text-align:center;position:relative;overflow:hidden}
-.r-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
-.r-card.high::after{background:var(--green)}
-.r-card.mid::after{background:var(--orange)}
-.r-card.low::after{background:var(--red)}
-.r-card-n{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;line-height:1;margin-bottom:3px}
-.r-card.high .r-card-n{color:var(--green)}
-.r-card.mid .r-card-n{color:var(--orange)}
-.r-card.low .r-card-n{color:var(--red)}
-.r-card-l{font-size:8px;font-family:'JetBrains Mono',monospace;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-
-/* Charts section */
-.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-@media(max-width:600px){.charts-grid{grid-template-columns:1fr}}
-.chart-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:20px}
-.chart-title{font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
-.chart-wrap{position:relative;height:200px}
-
-/* Improvement areas */
-.improve-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-@media(max-width:560px){.improve-grid{grid-template-columns:1fr}}
-.improve-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px}
-.improve-label{font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
-.improve-label.needs{color:var(--red)}
-.improve-label.good{color:var(--green)}
-.improve-bar-row{margin-bottom:7px}
-.improve-bar-top{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;color:var(--muted2)}
-.improve-bar-bg{height:5px;background:var(--s3);border-radius:3px;overflow:hidden}
-.improve-bar-fill{height:100%;border-radius:3px;transition:width 1s ease}
-
-.r-sec{background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:20px 24px;margin-bottom:13px}
-.r-sec-label{font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--tech);margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.r-sec-text{font-size:13px;line-height:1.75;color:var(--muted2);font-weight:300}
-
-/* Transcript */
-.transcript-section{background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:20px 24px;margin-bottom:13px}
-.transcript-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.transcript-label{font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--tech)}
-.dl-btn{background:var(--tech-dim);border:1px solid var(--tech-border);color:var(--tech);padding:5px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s}
-.dl-btn:hover{background:var(--tech);color:white}
-.transcript-items{display:flex;flex-direction:column;gap:12px;max-height:320px;overflow-y:auto}
-.tr-item{background:var(--s2);border-radius:8px;padding:12px 14px}
-.tr-q{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:5px;letter-spacing:.3px}
-.tr-q span{color:var(--tech)}
-.tr-a{font-size:12px;color:var(--muted2);line-height:1.6;font-weight:300}
-.tr-score{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;margin-top:5px}
-.tr-score.high{background:var(--green-dim);color:var(--green)}
-.tr-score.mid{background:rgba(249,115,22,.08);color:var(--orange)}
-.tr-score.low{background:var(--red-dim);color:var(--red)}
-
-/* Proctor report */
-.r-proctor{background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.18);border-radius:11px;padding:20px 24px;margin-bottom:13px}
-.r-proctor-label{font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid rgba(239,68,68,.15)}
-.proctor-item{font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace;padding:4px 0;border-bottom:1px solid rgba(239,68,68,.08)}
-.proctor-item.clean{color:var(--green)}
-
-.r-actions{display:flex;gap:10px;margin-top:6px}
-.r-btn{flex:1;padding:12px;border-radius:9px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;border:none}
-.r-btn.p{background:var(--tech);color:white}
-.r-btn.p:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(99,102,241,.3)}
-.r-btn.s{background:none;border:1px solid var(--border);color:var(--muted2)}
-.r-btn.s:hover{border-color:var(--tech);color:var(--tech)}
-
-@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
+/* Scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#d8c2ba; border-radius:2px; }
 </style>
 </head>
 <body>
 
-<!-- SETUP -->
-<div class="setup" id="setup">
-  <div class="setup-left">
-    <div class="sl-logo"><div class="sl-dot"></div>CampusPrep</div>
-    <div class="sl-hero">
-      <div class="sl-tag">// AI Interview Simulator v5</div>
-      <div class="sl-title">The most realistic<br>campus interview <em>ever.</em></div>
-      <p class="sl-desc">AI reads your resume, speaks every question aloud, tracks your face, transcribes your voice — and gives you a full performance dashboard.</p>
-    </div>
-    <div class="sl-feats">
-      <div class="sl-feat"><div class="sl-feat-icon">🎙️</div>AI interviewer speaks every question</div>
-      <div class="sl-feat"><div class="sl-feat-icon">⏱️</div>3-minute limit per question</div>
-      <div class="sl-feat"><div class="sl-feat-icon">📊</div>Full dashboard with graphs & transcript</div>
-      <div class="sl-feat"><div class="sl-feat-icon">🔒</div>Tab-switch proctoring enabled</div>
-    </div>
-  </div>
-  <div class="setup-right">
-    <div class="sf">
-      <div class="sf-title">Set up your interview</div>
-      <div class="sf-sub">30 seconds. Completely private.</div>
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 1: HERO / SETUP
+════════════════════════════════════════════════════════ -->
+<div class="screen active" id="s-hero">
 
-      <div class="field">
-        <div class="fl">Gemini API Key <span class="fr">free · aistudio.google.com</span></div>
-        <input type="password" class="fi" id="apiKey" placeholder="AIza...">
+  <!-- Nav -->
+  <header class="fixed top-0 z-50 w-full bg-[#fcf9f4]/80 backdrop-blur-xl border-b border-[#d8c2ba]/20">
+    <div class="flex justify-between items-center px-8 py-4 max-w-screen-xl mx-auto">
+      <div class="flex items-center gap-10">
+        <span class="text-2xl font-serif italic text-orange-900">CampusPrep</span>
+        <nav class="hidden md:flex gap-8 text-sm font-medium">
+          <a class="text-orange-900 font-bold border-b-2 border-orange-800 pb-0.5" href="#">Practice</a>
+          <a class="text-stone-500 hover:text-orange-800 transition-colors" href="#">Features</a>
+          <a class="text-stone-500 hover:text-orange-800 transition-colors" href="#">About</a>
+        </nav>
       </div>
-      <div class="field">
-        <div class="fl">Your Name <span class="fr">required</span></div>
-        <input type="text" class="fi" id="candName" placeholder="e.g. Priya Sharma">
+      <div class="flex items-center gap-4">
+        <button onclick="showSetup()" class="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-2.5 rounded-full text-sm font-semibold hover:scale-95 transition-all duration-200 shadow-lg shadow-primary/20">Begin Interview</button>
       </div>
-      <div class="field">
-        <div class="fl">Role You're Applying For <span class="fr">required</span></div>
-        <input type="text" class="fi" id="targetRole" placeholder="e.g. Software Engineer at TCS">
-      </div>
-      <div class="field">
-        <div class="fl">College</div>
-        <input type="text" class="fi" id="college" placeholder="e.g. VIT Vellore">
-      </div>
+    </div>
+  </header>
 
-      <div class="field">
-        <div class="fl">Interviewer Difficulty</div>
-        <div class="personality-grid">
-          <button class="pers-btn sel-easy" onclick="setPers('easy',this)" id="pb-easy"><span class="pb-icon">😊</span>Easy</button>
-          <button class="pers-btn" onclick="setPers('medium',this)" id="pb-medium"><span class="pb-icon">🧐</span>Medium</button>
-          <button class="pers-btn" onclick="setPers('hard',this)" id="pb-hard"><span class="pb-icon">😤</span>Hard</button>
+  <!-- Hero -->
+  <main class="pt-32 pb-24 px-8 max-w-screen-xl mx-auto">
+    <section class="grid lg:grid-cols-12 gap-12 items-center mb-28">
+      <div class="lg:col-span-6 space-y-8 fade-up">
+        <div class="inline-flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-primary border border-outline-variant/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse inline-block"></span>
+          AI-Powered · Resume-Aware · Proctored
+        </div>
+        <h1 class="font-serif text-[5.5rem] leading-[1.05] text-on-surface tracking-tight">
+          Interviews that feel <em class="italic text-primary">real.</em>
+        </h1>
+        <p class="text-xl text-on-surface-variant font-light leading-relaxed max-w-lg">
+          Upload your resume. Face a proctored two-round interview with an AI interviewer who reads your background, speaks every question, and analyses your face for confidence.
+        </p>
+        <div class="flex flex-wrap gap-4 pt-2">
+          <button onclick="showSetup()" class="bg-gradient-to-br from-primary to-primary-container text-white px-10 py-5 rounded-full text-lg font-bold hover:scale-95 transition-all duration-300 shadow-xl shadow-primary/25">Begin Your Interview</button>
+          <button class="bg-surface-container-high text-primary px-10 py-5 rounded-full text-lg font-bold hover:bg-surface-container-highest transition-all duration-300">See How It Works</button>
         </div>
       </div>
 
-      <div class="field">
-        <div class="fl">Questions per round <span class="fr" id="qLbl">5 questions</span></div>
-        <div class="q-row">
-          <span class="q-num" id="qNum">5</span>
-          <input type="range" class="q-slider" id="qSlider" min="5" max="12" value="5" oninput="setQ(this.value)">
-        </div>
-        <div class="q-range"><span>5 min</span><span>12 max</span></div>
-      </div>
-
-      <div class="field">
-        <div class="fl">Resume <span class="fr">required</span></div>
-        <div class="rzone" id="rzone">
-          <input type="file" id="rfile" accept=".pdf,.txt" onchange="onResume(event)">
-          <div id="rzP"><div class="rz-icon">📎</div><div class="rz-text">Drop or click to upload</div><div class="rz-sub">PDF or TXT</div></div>
-          <div class="rz-done" id="rzD"><span>✅</span><span id="rzN">resume.pdf</span></div>
-        </div>
-      </div>
-
-      <div class="pnotice">
-        <strong>⚠ Proctoring Active</strong>
-        Tab switching flagged. 3 violations = interview ends.
-      </div>
-      <div class="rounds-row">
-        <div class="rp tech">Round 1 · Technical</div>
-        <div class="rp hr">Round 2 · HR</div>
-      </div>
-      <button class="go-btn" id="goBtn" onclick="goPrecheck()">
-        <span class="txt">Continue to Camera Check →</span>
-        <span class="spin">Generating questions...</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- PRECHECK -->
-<div class="precheck" id="precheck">
-  <div class="pcc">
-    <div class="pcc-icon">📋</div>
-    <div class="pcc-title">Before We Begin</div>
-    <div class="pcc-sub">Read the rules, enable camera, then enter fullscreen to start.</div>
-    <div class="rules">
-      <div class="rule"><div class="rdot"></div><span>Do not switch tabs or windows during the interview</span></div>
-      <div class="rule"><div class="rdot"></div><span>Keep your face clearly visible on camera at all times</span></div>
-      <div class="rule"><div class="rdot"></div><span>Only one person should be visible on camera</span></div>
-      <div class="rule"><div class="rdot"></div><span>Each question has a 3-minute time limit — answer will auto-submit</span></div>
-      <div class="rule"><div class="rdot"></div><span>3 tab switch violations end the interview automatically</span></div>
-    </div>
-    <div class="cam-wrap">
-      <video id="preVid" autoplay muted playsinline></video>
-      <div class="cam-overlay" id="preOverlay">
-        <div class="cam-overlay-icon">📷</div>
-        <div class="cam-overlay-txt">Enable camera to continue</div>
-      </div>
-    </div>
-    <button class="pcam-btn" id="pCamBtn" onclick="startPreCam()">Enable Camera</button>
-    <button class="fs-btn" id="fsBtn" onclick="startIV()" disabled>Enter Fullscreen & Start Interview</button>
-  </div>
-</div>
-
-<!-- INTERVIEW -->
-<div class="iv" id="iv">
-  <div class="iv-bar">
-    <div class="iv-logo">CampusPrep</div>
-    <div class="rb tech" id="rb"><div class="rb-dot"></div><span id="rbLbl">Technical Round</span></div>
-    <div class="qdots-bar" id="qdots"></div>
-    <div class="nav-timer" id="navTimer">00:00</div>
-  </div>
-  <div class="vbanner" id="vbanner"></div>
-
-  <div class="iv-main">
-    <div class="iv-video">
-      <div class="cams">
-        <!-- Interviewer -->
-        <div class="cam-card ivr">
-          <div class="ai-visual" id="aiVis">
-            <div class="ai-emoji" id="aiEmoji">👨‍💼</div>
-            <div class="ai-wave" id="aiWave" style="display:none">
-              <div class="wbar" style="height:6px"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar" style="height:7px"></div>
+      <div class="lg:col-span-6 relative fade-up-2">
+        <div class="absolute -top-8 -left-8 w-40 h-40 bg-secondary-container rounded-full mix-blend-multiply filter blur-2xl opacity-60 pointer-events-none"></div>
+        <div class="absolute -bottom-12 -right-12 w-56 h-56 bg-primary-fixed rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"></div>
+        <div class="relative bg-surface-container-low rounded-xl p-8 border border-outline-variant/20 shadow-2xl">
+          <!-- Setup form embedded in hero -->
+          <div class="space-y-5" id="heroSetupForm">
+            <div>
+              <p class="font-serif text-2xl text-on-surface mb-1">Set up your practice session</p>
+              <p class="text-sm text-on-surface-variant font-light">Takes 30 seconds. Completely private.</p>
             </div>
-            <div class="ai-nametag" id="aiTag">Rahul Verma · Technical</div>
-          </div>
-          <div class="cam-label" id="iLbl">Rahul Verma</div>
-          <div class="cam-status-dot"></div>
-        </div>
-        <!-- Candidate -->
-        <div class="cam-card cand">
-          <video class="cam-vid" id="candVid" autoplay muted playsinline style="display:none"></video>
-          <div class="cam-placeholder" id="candPH">
-            <div class="cam-ph-icon">👤</div>
-            <div class="cam-ph-txt">Camera not enabled</div>
-          </div>
-          <div class="no-face" id="noFace">⚠ Face not detected</div>
-          <div class="cam-label" id="youLbl">You</div>
-        </div>
-      </div>
 
-      <!-- Question + timer -->
-      <div class="q-section">
-        <div class="q-timer">
-          <svg width="48" height="48" viewBox="0 0 48 48">
-            <circle class="q-timer-track" cx="24" cy="24" r="20"/>
-            <circle class="q-timer-fill" id="timerRing" cx="24" cy="24" r="20"/>
-          </svg>
-          <div class="q-timer-num" id="timerNum">3:00</div>
-        </div>
-        <div class="q-content">
-          <div class="q-lbl" id="qLbl2">Interviewer is speaking...</div>
-          <div class="q-txt" id="qTxt">Setting up your interview...</div>
-        </div>
-      </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1.5">Gemini API Key <span class="text-primary normal-case font-normal tracking-normal">free at aistudio.google.com</span></label>
+              <input type="password" id="h-api" placeholder="AIza..." class="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-4 py-3 text-sm font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder-outline">
+            </div>
 
-      <!-- Input -->
-      <div class="iv-input">
-        <div class="mode-row">
-          <button class="mmode on" id="mText" onclick="setMode('text')">⌨️ Type</button>
-          <button class="mmode" id="mVoice" onclick="setMode('voice')">🎤 Speak</button>
-        </div>
-        <div id="textPanel">
-          <div class="txt-row">
-            <textarea class="ans-ta" id="ansTA" placeholder="Type your answer... (Enter to send)" disabled
-              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAnswer()}"
-              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-            <button class="send-b" id="sendB" onclick="sendAnswer()" disabled>↑</button>
-          </div>
-        </div>
-        <div id="voicePanel" style="display:none">
-          <div class="voice-area">
-            <div class="voice-top">
-              <button class="mic-b" id="micB" onclick="toggleMic()" disabled>🎤</button>
-              <div class="voice-transcript-box" id="vBox">
-                <span class="voice-hint">Press mic to start speaking...</span>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1.5">Your Name</label>
+                <input type="text" id="h-name" placeholder="e.g. Priya Sharma" class="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder-outline">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1.5">College</label>
+                <input type="text" id="h-college" placeholder="e.g. VIT Vellore" class="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder-outline">
               </div>
             </div>
-            <div class="voice-bottom">
-              <button class="vclear" id="vClear" onclick="clearVoice()">Clear</button>
-              <button class="vsend" id="vSend" onclick="sendVoice()">Send Answer →</button>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1.5">Role You're Applying For</label>
+              <input type="text" id="h-role" placeholder="e.g. Software Engineer at TCS" class="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder-outline">
             </div>
+
+            <!-- Personality -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Interviewer Difficulty</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button onclick="setPers('easy',this)" id="pb-easy" class="pers-btn active-pers py-3 px-2 rounded-xl border-2 border-primary bg-primary-fixed/40 text-primary text-xs font-bold transition-all">
+                  <span class="block text-lg mb-0.5">😊</span>Easy
+                </button>
+                <button onclick="setPers('medium',this)" id="pb-medium" class="pers-btn py-3 px-2 rounded-xl border-2 border-outline-variant/30 text-on-surface-variant text-xs font-bold hover:border-primary/40 transition-all">
+                  <span class="block text-lg mb-0.5">🧐</span>Medium
+                </button>
+                <button onclick="setPers('hard',this)" id="pb-hard" class="pers-btn py-3 px-2 rounded-xl border-2 border-outline-variant/30 text-on-surface-variant text-xs font-bold hover:border-primary/40 transition-all">
+                  <span class="block text-lg mb-0.5">😤</span>Hard
+                </button>
+              </div>
+            </div>
+
+            <!-- Q Count -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Questions per round — <span class="text-primary font-bold" id="h-qnum">5</span></label>
+              <input type="range" id="h-qslider" min="5" max="12" value="5" oninput="document.getElementById('h-qnum').textContent=this.value" class="w-full h-1 appearance-none bg-outline-variant/30 rounded-full outline-none cursor-pointer accent-primary">
+              <div class="flex justify-between text-[10px] text-on-surface-variant mt-1"><span>5 min</span><span>12 max</span></div>
+            </div>
+
+            <!-- Resume -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1.5">Resume (PDF or TXT)</label>
+              <div class="relative border-2 border-dashed border-outline-variant/40 rounded-xl p-5 text-center hover:border-primary/40 hover:bg-primary-fixed/10 transition-all cursor-pointer" id="h-rzone">
+                <input type="file" id="h-rfile" accept=".pdf,.txt" onchange="onResume(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                <div id="h-rz-prompt">
+                  <span class="material-symbols-outlined text-outline text-2xl block mb-1">attach_file</span>
+                  <p class="text-sm text-on-surface-variant font-medium">Drop or click to upload</p>
+                  <p class="text-xs text-outline font-mono mt-0.5">PDF or TXT · max 5MB</p>
+                </div>
+                <div id="h-rz-done" class="hidden items-center justify-center gap-2 text-sm font-semibold text-tertiary">
+                  <span class="material-symbols-outlined ms-fill text-tertiary">check_circle</span>
+                  <span id="h-rz-name">resume.pdf</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-surface-container-high rounded-xl px-4 py-3 text-xs text-on-surface-variant flex items-start gap-2 border border-outline-variant/20">
+              <span class="material-symbols-outlined text-sm text-outline mt-0.5">security</span>
+              <span>Tab switching is flagged. 3 violations end the interview. Camera analysis is optional but recommended.</span>
+            </div>
+
+            <button onclick="goPrecheck()" id="h-go-btn" class="w-full bg-gradient-to-br from-primary to-primary-container text-white py-4 rounded-xl text-base font-bold hover:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+              <span class="btn-txt">Continue to Camera Check</span>
+              <span class="btn-spin hidden text-sm font-mono">Generating questions...</span>
+              <span class="material-symbols-outlined btn-arrow">arrow_forward</span>
+            </button>
           </div>
         </div>
-        <div class="hint" id="hint">// Setting up interview...</div>
       </div>
-    </div>
+    </section>
 
-    <!-- Sidebar -->
-    <div class="iv-sidebar">
-      <div class="sb">
-        <div class="sb-lbl">🔒 Proctor</div>
-        <div class="vlog" id="vlog"><div class="vlog-item">No violations</div></div>
-      </div>
-      <div class="sb">
-        <div class="sb-lbl">📷 Face</div>
-        <div class="face-pills">
-          <div class="fpill" id="fp-e"><span class="fpill-n" id="fp-e-n">—</span><span class="fpill-l">Eye</span></div>
-          <div class="fpill" id="fp-c"><span class="fpill-n" id="fp-c-n">—</span><span class="fpill-l">Conf.</span></div>
-          <div class="fpill" id="fp-x"><span class="fpill-n" id="fp-x-n">—</span><span class="fpill-l">Expr.</span></div>
+    <!-- Bento Features -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-up-3">
+      <div class="md:col-span-2 bg-surface-container-low p-10 rounded-xl border border-outline-variant/10 flex flex-col justify-between min-h-[280px]">
+        <div>
+          <h3 class="font-serif text-3xl mb-3">Resume-Aware Questions</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed max-w-sm">The AI reads your actual resume and generates questions about your specific projects, skills, and experience — not generic templates.</p>
+        </div>
+        <div class="flex items-center justify-between pt-8">
+          <div class="flex -space-x-3">
+            <div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs border-2 border-surface">TCS</div>
+            <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold text-xs border-2 border-surface">INF</div>
+            <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-bold text-xs border-2 border-surface">WIP</div>
+            <div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary font-bold text-xs border-2 border-surface">+40</div>
+          </div>
+          <span class="text-sm text-primary font-semibold flex items-center gap-1">Works for all roles <span class="material-symbols-outlined text-base">arrow_forward</span></span>
         </div>
       </div>
-      <div class="sb">
-        <div class="sb-lbl">Score</div>
-        <div class="sc-circ" id="scCirc"><div class="sc-n" id="scN">—</div><div class="sc-s">/100</div></div>
-        <div class="dim-bars">
-          <div><div class="dim-top"><span class="dim-name">Communication</span><span class="dim-val" id="dv-comm">—</span></div><div class="dim-bg"><div class="dim-fill" id="df-comm" style="width:0%"></div></div></div>
-          <div><div class="dim-top"><span class="dim-name">Relevance</span><span class="dim-val" id="dv-rel">—</span></div><div class="dim-bg"><div class="dim-fill" id="df-rel" style="width:0%"></div></div></div>
-          <div><div class="dim-top"><span class="dim-name">Depth</span><span class="dim-val" id="dv-depth">—</span></div><div class="dim-bg"><div class="dim-fill" id="df-depth" style="width:0%"></div></div></div>
-          <div><div class="dim-top"><span class="dim-name">Body Language</span><span class="dim-val" id="dv-face">—</span></div><div class="dim-bg"><div class="dim-fill" id="df-face" style="width:0%"></div></div></div>
+      <div class="bg-secondary-container p-10 rounded-xl text-on-secondary-container flex flex-col items-center text-center justify-center gap-4">
+        <span class="material-symbols-outlined text-5xl ms-fill opacity-50" style="font-variation-settings:'FILL' 1,'wght' 300">videocam</span>
+        <h3 class="font-serif text-2xl">Live Face Analysis</h3>
+        <p class="text-sm leading-relaxed opacity-80">Eye contact, confidence, and expression scored after every answer using Gemini Vision.</p>
+      </div>
+      <div class="bg-primary p-10 rounded-xl text-white flex flex-col justify-between">
+        <span class="material-symbols-outlined text-3xl mb-4" style="font-variation-settings:'FILL' 1,'wght' 300">security</span>
+        <div>
+          <h3 class="font-serif text-2xl mb-2">Proctored Session</h3>
+          <p class="text-sm leading-relaxed opacity-90">Tab switch detection, fullscreen enforcement, and a violation log in your final report.</p>
         </div>
       </div>
-      <div class="sb" style="flex:1">
-        <div class="sb-lbl">Coach Notes</div>
-        <div class="fb-items" id="fbItems"><div class="fb-item">Notes appear after each answer.</div></div>
+      <div class="md:col-span-2 bg-surface-container-highest p-10 rounded-xl flex items-center gap-8">
+        <div class="hidden md:flex flex-col items-center gap-3 flex-shrink-0">
+          <div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center text-2xl">🎤</div>
+          <div class="w-1 h-12 bg-outline-variant/30 rounded-full"></div>
+          <div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-2xl">📊</div>
+        </div>
+        <div>
+          <h3 class="font-serif text-2xl mb-3">Voice + Detailed Report</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed mb-4">Speak or type your answers. Get a full performance dashboard with radar charts, score-by-question bars, and a downloadable transcript.</p>
+          <div class="flex gap-2">
+            <span class="px-3 py-1 bg-white/60 rounded-full text-xs font-semibold text-primary">TECHNICAL ROUND</span>
+            <span class="px-3 py-1 bg-white/60 rounded-full text-xs font-semibold text-primary">HR ROUND</span>
+          </div>
+        </div>
       </div>
-      <div id="breakSlot"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 2: PRECHECK
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-precheck">
+  <div class="min-h-screen bg-background flex items-center justify-center p-8">
+    <div class="max-w-lg w-full">
+      <div class="text-center mb-8 fade-up">
+        <span class="text-4xl block mb-4">📋</span>
+        <h1 class="font-serif text-4xl text-on-surface mb-2">Before We Begin</h1>
+        <p class="text-on-surface-variant font-light">Read the session rules, enable your camera, then enter fullscreen.</p>
+      </div>
+
+      <div class="bg-surface-container-low rounded-xl p-6 mb-5 border border-outline-variant/20 fade-up-2">
+        <h3 class="font-serif text-lg mb-4 text-on-surface">Session Rules</h3>
+        <div class="space-y-3">
+          <div class="flex items-start gap-3 text-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-base mt-0.5">shield</span>
+            <span>Do not switch browser tabs or windows during the interview</span>
+          </div>
+          <div class="flex items-start gap-3 text-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-base mt-0.5">videocam</span>
+            <span>Keep your face clearly visible on camera at all times</span>
+          </div>
+          <div class="flex items-start gap-3 text-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-base mt-0.5">person</span>
+            <span>Only one person should be visible on camera</span>
+          </div>
+          <div class="flex items-start gap-3 text-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-base mt-0.5">timer</span>
+            <span>Each question has a 3-minute limit — answer auto-submits after</span>
+          </div>
+          <div class="flex items-start gap-3 text-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-error text-base mt-0.5">warning</span>
+            <span>3 tab switch violations will automatically end your interview</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera preview -->
+      <div class="rounded-xl overflow-hidden bg-surface-container border border-outline-variant/20 aspect-video mb-4 relative fade-up-3" id="pc-wrap">
+        <video id="pc-vid" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
+        <div class="absolute inset-0 flex flex-col items-center justify-center bg-surface-container gap-2" id="pc-overlay">
+          <span class="material-symbols-outlined text-4xl text-outline">photo_camera</span>
+          <p class="text-sm text-on-surface-variant">Enable camera to preview</p>
+        </div>
+      </div>
+
+      <button onclick="startPreCam()" id="pc-cam-btn" class="w-full mb-3 py-3 rounded-xl border-2 border-outline-variant/30 text-on-surface-variant text-sm font-semibold hover:border-primary/40 hover:text-primary transition-all flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-base">photo_camera</span>
+        <span id="pc-cam-txt">Enable Camera</span>
+      </button>
+
+      <button onclick="startIV()" id="pc-start-btn" disabled class="w-full py-4 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white font-bold text-base hover:scale-[0.98] transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined">fullscreen</span>
+        Enter Fullscreen & Start Interview
+      </button>
+
+      <p class="text-center text-xs text-on-surface-variant mt-4">Camera is optional. Interview works without it, but face analysis will be skipped.</p>
     </div>
   </div>
 </div>
 
-<!-- REPORT -->
-<div class="report" id="report">
-  <div class="rep-wrap">
-    <div class="rep-tag">✓ Interview Complete</div>
-    <div class="rep-title" id="repTitle">Your Interview<br><span>Report</span></div>
-    <div id="verdictBlock"></div>
-    <div class="r-grid" id="rGrid"></div>
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 3: INTERVIEW ROOM
+════════════════════════════════════════════════════════ -->
+<div class="screen flex-screen" id="s-iv" style="min-height:100vh">
 
-    <!-- Charts -->
-    <div class="charts-grid">
-      <div class="chart-card">
-        <div class="chart-title">Performance Radar</div>
-        <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+  <!-- Top bar -->
+  <header class="bg-[#fcf9f4]/90 backdrop-blur-xl border-b border-outline-variant/20 sticky top-0 z-50 flex-shrink-0">
+    <div class="flex justify-between items-center px-6 py-3 max-w-screen-2xl mx-auto">
+      <div class="flex items-center gap-6">
+        <span class="font-serif italic text-orange-900 text-xl">CampusPrep</span>
+        <div class="flex items-center gap-2 bg-surface-container-low px-4 py-1.5 rounded-full border border-outline-variant/20">
+          <div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+          <span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant" id="iv-round-lbl">Technical Round</span>
+        </div>
       </div>
-      <div class="chart-card">
-        <div class="chart-title">Score by Question</div>
-        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      <div class="flex items-center gap-4">
+        <div class="flex gap-1.5 items-center" id="iv-qdots"></div>
+        <div class="font-mono text-sm text-on-surface-variant" id="iv-timer">00:00</div>
+        <button onclick="skipToReport()" class="text-xs text-on-surface-variant border border-outline-variant/30 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all font-semibold">End Early</button>
       </div>
     </div>
+  </header>
 
-    <!-- Improvement areas -->
-    <div class="improve-grid" id="improveGrid"></div>
+  <!-- Violation banner -->
+  <div class="vbanner bg-error-container border-b border-error/30 px-6 py-2 text-center text-sm font-bold text-error font-mono" id="iv-vbanner"></div>
 
-    <div class="r-sec"><div class="r-sec-label">Overall Assessment</div><div class="r-sec-text" id="rOverall">—</div></div>
-    <div class="r-sec"><div class="r-sec-label">Technical Round</div><div class="r-sec-text" id="rTech">—</div></div>
-    <div class="r-sec"><div class="r-sec-label">HR Round</div><div class="r-sec-text" id="rHR">—</div></div>
-    <div class="r-sec"><div class="r-sec-label">Face & Body Language</div><div class="r-sec-text" id="rFace">—</div></div>
-    <div class="r-sec"><div class="r-sec-label">Before Your Real Interview</div><div class="r-sec-text" id="rNext">—</div></div>
+  <!-- Main layout -->
+  <div class="flex-1 flex overflow-hidden">
 
-    <!-- Transcript -->
-    <div class="transcript-section">
-      <div class="transcript-header">
-        <div class="transcript-label">📝 Full Interview Transcript</div>
-        <button class="dl-btn" onclick="downloadTranscript()">↓ Download</button>
+    <!-- Left sidebar -->
+    <aside class="hidden lg:flex flex-col w-64 border-r border-outline-variant/20 bg-surface-container-lowest py-6 px-4 gap-5 flex-shrink-0 overflow-y-auto">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">Interviewer</p>
+        <div class="bg-surface-container-low rounded-xl p-5 text-center border border-outline-variant/10">
+          <div class="text-5xl mb-2 inline-block" id="iv-i-emoji" style="animation:breathe 3s ease-in-out infinite">👨‍💼</div>
+          <p class="font-serif text-base font-semibold text-on-surface" id="iv-i-name">Rahul Verma</p>
+          <p class="text-xs text-on-surface-variant font-mono mt-0.5" id="iv-i-role">Sr. Engineer · 8 yrs</p>
+          <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" id="iv-status" style="background:rgba(135,77,51,0.1);color:#874d33">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse inline-block"></span>
+            <span id="iv-status-txt">Typing...</span>
+          </div>
+        </div>
       </div>
-      <div class="transcript-items" id="transcriptItems"></div>
-    </div>
 
-    <div class="r-proctor"><div class="r-proctor-label">🔒 Proctoring Report</div><div id="proctorItems"></div></div>
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">Progress</p>
+        <div class="space-y-1.5" id="iv-prog-list">
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold" style="background:rgba(135,77,51,0.08);color:#874d33">
+            <span class="material-symbols-outlined text-sm ms-fill" style="font-variation-settings:'FILL' 1,'wght' 400">radio_button_checked</span>Technical Round
+          </div>
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-on-surface-variant">
+            <span class="material-symbols-outlined text-sm">radio_button_unchecked</span>HR Round
+          </div>
+        </div>
+      </div>
 
-    <div class="r-actions">
-      <button class="r-btn p" onclick="location.reload()">Practice Again</button>
-      <button class="r-btn s" onclick="downloadTranscript()">Download Transcript</button>
+      <div>
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">🔒 Proctor Log</p>
+        <div class="space-y-1.5" id="iv-vlog">
+          <div class="text-xs text-on-surface-variant bg-surface-container px-3 py-2 rounded-lg font-mono">No violations</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Video + Question + Input -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- Camera stage -->
+      <div class="flex-1 grid grid-cols-2 gap-4 p-4 min-h-0">
+
+        <!-- Interviewer cam -->
+        <div class="relative rounded-xl overflow-hidden bg-gradient-to-br from-stone-900 to-stone-800 border-2 border-primary/30">
+          <div class="absolute inset-0 flex flex-col items-center justify-center gap-3" id="iv-ai-vis">
+            <div class="text-7xl" id="iv-ai-emoji" style="animation:breathe 3s ease-in-out infinite">👨‍💼</div>
+            <div class="flex gap-1 items-end h-5" id="iv-wave" style="display:none!important">
+              <div class="wave-bar" style="height:6px"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar" style="height:7px"></div>
+            </div>
+            <div class="bg-black/40 backdrop-blur px-3 py-1 rounded-full text-white text-xs font-semibold" id="iv-ai-nametag">Rahul Verma · Technical</div>
+          </div>
+          <div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full text-white text-[10px] font-bold font-mono" id="iv-i-lbl">Rahul Verma</div>
+          <div class="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-green-400 shadow-lg shadow-green-400/50" style="animation:pulse 2s infinite"></div>
+        </div>
+
+        <!-- Candidate cam -->
+        <div class="relative rounded-xl overflow-hidden bg-surface-container border-2 border-outline-variant/30" id="iv-cand-card">
+          <video class="w-full h-full object-cover scale-x-[-1]" id="iv-cand-vid" autoplay muted playsinline style="display:none"></video>
+          <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface-container" id="iv-cand-ph">
+            <span class="material-symbols-outlined text-4xl text-outline">person</span>
+            <p class="text-xs text-on-surface-variant">Camera not enabled</p>
+          </div>
+          <div class="absolute top-3 left-3 bg-error/80 backdrop-blur px-2.5 py-1 rounded-full text-white text-[10px] font-bold font-mono hidden" id="iv-noface">⚠ Face not detected</div>
+          <div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full text-white text-[10px] font-bold font-mono" id="iv-you-lbl">You</div>
+        </div>
+      </div>
+
+      <!-- Question + Timer -->
+      <div class="bg-surface-container-lowest border-t border-outline-variant/20 px-6 py-4 flex gap-4 items-start flex-shrink-0">
+        <!-- Circular timer -->
+        <div class="relative flex-shrink-0 w-14 h-14">
+          <svg width="56" height="56" viewBox="0 0 56 56" class="absolute inset-0">
+            <circle cx="28" cy="28" r="22" fill="none" stroke="#e5e2dd" stroke-width="4"/>
+            <circle cx="28" cy="28" r="22" fill="none" stroke="#874d33" stroke-width="4" stroke-linecap="round" class="timer-ring-fill" id="iv-timer-ring" style="stroke-dasharray:138.2;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:28px 28px"/>
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="font-mono text-xs font-bold text-on-surface" id="iv-q-timer">3:00</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1" id="iv-q-lbl">Interviewer is speaking...</p>
+          <p class="text-base text-on-surface font-serif italic leading-snug" id="iv-q-txt">Setting up your interview...</p>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="bg-surface-container-low border-t border-outline-variant/20 px-6 py-4 flex-shrink-0">
+        <!-- Mode toggle -->
+        <div class="flex gap-2 mb-3">
+          <button onclick="setMode('text')" id="iv-m-text" class="flex-1 py-2 rounded-xl text-xs font-bold border-2 border-primary bg-primary-fixed/30 text-primary transition-all flex items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">keyboard</span>Type
+          </button>
+          <button onclick="setMode('voice')" id="iv-m-voice" class="flex-1 py-2 rounded-xl text-xs font-bold border-2 border-outline-variant/30 text-on-surface-variant hover:border-primary/30 transition-all flex items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">mic</span>Speak
+          </button>
+        </div>
+
+        <!-- Text panel -->
+        <div id="iv-text-panel">
+          <div class="flex gap-2 items-end">
+            <textarea id="iv-ans-ta" placeholder="Type your answer... (Enter to send, Shift+Enter for new line)" disabled rows="2"
+              class="flex-1 bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 text-sm resize-none outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed placeholder-outline"
+              style="max-height:100px"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAnswer()}"
+              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+            <button onclick="sendAnswer()" id="iv-send-btn" disabled class="w-11 h-11 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl flex items-center justify-center hover:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+              <span class="material-symbols-outlined text-lg">send</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Voice panel -->
+        <div id="iv-voice-panel" style="display:none">
+          <div class="flex gap-3 items-start">
+            <button onclick="toggleMic()" id="iv-mic-btn" disabled class="w-12 h-12 rounded-full border-2 border-outline-variant/30 bg-surface-container flex items-center justify-center text-on-surface-variant hover:border-primary/40 transition-all flex-shrink-0 disabled:opacity-30">
+              <span class="material-symbols-outlined">mic</span>
+            </button>
+            <div class="flex-1 bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm min-h-[44px] voice-box" id="iv-vbox">
+              <span class="text-outline italic">Press mic to start speaking...</span>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-2">
+            <button onclick="clearVoice()" id="iv-vclear" class="text-xs text-on-surface-variant border border-outline-variant/30 px-3 py-1.5 rounded-full hover:border-primary transition-all hidden">Clear</button>
+            <button onclick="sendVoice()" id="iv-vsend" class="text-xs bg-primary text-white px-4 py-1.5 rounded-full font-semibold hidden">Send Answer →</button>
+          </div>
+        </div>
+
+        <p class="text-center text-[10px] text-on-surface-variant font-mono mt-2" id="iv-hint">// Setting up interview...</p>
+      </div>
+    </main>
+
+    <!-- Right sidebar: Scores + Face + Feedback -->
+    <aside class="hidden lg:flex flex-col w-72 border-l border-outline-variant/20 bg-surface-container-lowest flex-shrink-0 overflow-y-auto">
+
+      <!-- Face analysis -->
+      <div class="p-5 border-b border-outline-variant/20">
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">📷 Face Analysis</p>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="text-center bg-surface-container rounded-lg py-2 px-1 border border-outline-variant/10" id="fp-eye">
+            <span class="font-mono text-base font-bold block text-on-surface-variant" id="fp-eye-n">—</span>
+            <span class="text-[9px] text-on-surface-variant uppercase tracking-wide">Eye</span>
+          </div>
+          <div class="text-center bg-surface-container rounded-lg py-2 px-1 border border-outline-variant/10" id="fp-conf">
+            <span class="font-mono text-base font-bold block text-on-surface-variant" id="fp-conf-n">—</span>
+            <span class="text-[9px] text-on-surface-variant uppercase tracking-wide">Conf.</span>
+          </div>
+          <div class="text-center bg-surface-container rounded-lg py-2 px-1 border border-outline-variant/10" id="fp-expr">
+            <span class="font-mono text-base font-bold block text-on-surface-variant" id="fp-expr-n">—</span>
+            <span class="text-[9px] text-on-surface-variant uppercase tracking-wide">Expr.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live score -->
+      <div class="p-5 border-b border-outline-variant/20">
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">Live Score</p>
+        <div class="flex items-center justify-center mb-4">
+          <div class="w-20 h-20 rounded-full border-4 border-outline-variant/30 flex flex-col items-center justify-center transition-all" id="iv-sc-circ">
+            <span class="font-serif text-3xl font-bold text-on-surface-variant" id="iv-sc-n">—</span>
+            <span class="text-[9px] text-on-surface-variant font-mono">/100</span>
+          </div>
+        </div>
+        <div class="space-y-2.5">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Communication</span><span class="font-mono font-bold text-on-surface" id="iv-dv-comm">—</span></div>
+            <div class="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div class="prog-fill bg-primary h-full" id="iv-df-comm" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Relevance</span><span class="font-mono font-bold text-on-surface" id="iv-dv-rel">—</span></div>
+            <div class="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div class="prog-fill bg-primary h-full" id="iv-df-rel" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Depth</span><span class="font-mono font-bold text-on-surface" id="iv-dv-depth">—</span></div>
+            <div class="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div class="prog-fill bg-primary h-full" id="iv-df-depth" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Body Language</span><span class="font-mono font-bold text-on-surface" id="iv-dv-face">—</span></div>
+            <div class="h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div class="prog-fill bg-secondary h-full" id="iv-df-face" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coach notes -->
+      <div class="p-5 flex-1">
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">Coach Notes</p>
+        <div class="space-y-2" id="iv-fb-list">
+          <p class="text-xs text-on-surface-variant italic">Notes appear after each answer.</p>
+        </div>
+      </div>
+
+      <!-- Break card slot -->
+      <div id="iv-break-slot"></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 4: REPORT / INSIGHTS
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-report">
+  <!-- Nav -->
+  <nav class="bg-[#fcf9f4]/80 backdrop-blur-xl border-b border-outline-variant/20 sticky top-0 z-50">
+    <div class="flex justify-between items-center px-8 py-4 max-w-screen-xl mx-auto">
+      <div class="flex items-center gap-8">
+        <span class="font-serif italic text-2xl text-orange-900">CampusPrep</span>
+        <div class="hidden md:flex gap-6 text-sm font-medium">
+          <a class="text-stone-500 hover:text-orange-800 transition-colors" href="#">Practice</a>
+          <a class="text-orange-900 font-bold border-b-2 border-orange-800 pb-0.5" href="#">Performance</a>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="downloadTranscript()" class="flex items-center gap-2 bg-surface-container-high text-on-surface-variant px-5 py-2 rounded-full text-sm font-semibold hover:bg-surface-dim transition-colors">
+          <span class="material-symbols-outlined text-sm">download</span>Export Transcript
+        </button>
+        <button onclick="location.reload()" class="bg-gradient-to-br from-primary to-primary-container text-white px-6 py-2 rounded-full text-sm font-semibold hover:scale-95 transition-all">Practice Again</button>
+      </div>
     </div>
+  </nav>
+
+  <div class="flex max-w-screen-xl mx-auto">
+    <!-- Side nav -->
+    <aside class="hidden lg:flex flex-col h-screen w-64 py-8 sticky top-0 bg-background flex-shrink-0">
+      <div class="px-8 mb-8">
+        <p class="font-serif text-xl text-orange-900 italic">Performance</p>
+        <p class="text-xs text-on-surface-variant mt-1 uppercase tracking-widest">Interview Review</p>
+      </div>
+      <nav class="space-y-1 px-4">
+        <a href="#r-verdict" class="flex items-center gap-3 bg-stone-200/50 text-orange-900 rounded-r-full font-semibold px-4 py-3 text-sm">
+          <span class="material-symbols-outlined text-base ms-fill" style="font-variation-settings:'FILL' 1,'wght' 400">insights</span>Overview
+        </a>
+        <a href="#r-charts" class="flex items-center gap-3 text-stone-500 px-4 py-3 text-sm hover:translate-x-1 transition-transform">
+          <span class="material-symbols-outlined text-base">bar_chart</span>Analytics
+        </a>
+        <a href="#r-transcript" class="flex items-center gap-3 text-stone-500 px-4 py-3 text-sm hover:translate-x-1 transition-transform">
+          <span class="material-symbols-outlined text-base">description</span>Transcript
+        </a>
+        <a href="#r-proctor" class="flex items-center gap-3 text-stone-500 px-4 py-3 text-sm hover:translate-x-1 transition-transform">
+          <span class="material-symbols-outlined text-base">security</span>Proctoring
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Report content -->
+    <main class="flex-1 px-8 py-12 bg-surface-container-low min-h-screen">
+
+      <!-- Hero header -->
+      <header class="mb-12 fade-up" id="r-verdict">
+        <span class="text-primary font-bold tracking-widest text-xs uppercase mb-3 block">Performance Review · AI Interview</span>
+        <h1 class="font-serif text-6xl text-on-surface leading-tight mb-2" id="r-name-title">Your Interview</h1>
+        <p class="text-on-surface-variant text-lg font-light" id="r-role-sub">Report</p>
+      </header>
+
+      <!-- Verdict + score -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
+        <div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-10 shadow-[0_20px_40px_rgba(83,68,62,0.06)] relative overflow-hidden border border-outline-variant/10">
+          <div class="relative z-10">
+            <span class="font-serif italic text-xl text-primary block mb-4">Overall Impression</span>
+            <p class="text-2xl font-serif italic text-on-surface leading-snug mb-6" id="r-overall-q">"Loading..."</p>
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-lg">🤖</div>
+              <div>
+                <p class="text-sm font-bold text-on-surface" id="r-verdict-name">—</p>
+                <p class="text-xs text-on-surface-variant">AI Interview Coach · CampusPrep</p>
+              </div>
+            </div>
+          </div>
+          <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl pointer-events-none"></div>
+        </div>
+        <div class="lg:col-span-4 flex flex-col gap-4">
+          <div class="flex-1 bg-secondary-container rounded-xl p-7 flex flex-col justify-between border border-on-secondary-container/10">
+            <span class="material-symbols-outlined text-secondary text-3xl ms-fill" style="font-variation-settings:'FILL' 1,'wght' 300">verified_user</span>
+            <div>
+              <h3 class="font-serif text-xl text-on-secondary-container mt-3 mb-2" id="r-verdict-label">Evaluating...</h3>
+              <p class="text-on-secondary-container/80 text-sm leading-relaxed" id="r-verdict-desc">Your full report is being generated.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Score cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+          <span class="font-serif text-5xl font-bold text-primary block mb-1" id="r-sc-overall">—</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Overall</span>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+          <span class="font-serif text-5xl font-bold text-on-surface block mb-1" id="r-sc-tech">—</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Technical</span>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+          <span class="font-serif text-5xl font-bold text-on-surface block mb-1" id="r-sc-hr">—</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">HR Round</span>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+          <span class="font-serif text-5xl font-bold text-on-surface block mb-1" id="r-sc-face">—</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Face Score</span>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10" id="r-charts">
+        <div class="bg-surface-container-lowest rounded-xl p-7 border border-outline-variant/10 shadow-sm">
+          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-5">Performance Radar</p>
+          <div class="h-56 relative"><canvas id="r-radar"></canvas></div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-7 border border-outline-variant/10 shadow-sm">
+          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-5">Score by Question</p>
+          <div class="h-56 relative"><canvas id="r-bar"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Improvement areas -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10" id="r-improve-grid"></div>
+
+      <!-- Textual sections -->
+      <div class="space-y-5 mb-10">
+        <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
+          <span class="text-primary italic font-serif text-lg block mb-3">Technical Round Feedback</span>
+          <p class="text-on-surface-variant leading-relaxed" id="r-tech-txt">—</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
+          <span class="text-primary italic font-serif text-lg block mb-3">HR Round Feedback</span>
+          <p class="text-on-surface-variant leading-relaxed" id="r-hr-txt">—</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
+          <span class="text-primary italic font-serif text-lg block mb-3">Face & Body Language</span>
+          <p class="text-on-surface-variant leading-relaxed" id="r-face-txt">—</p>
+        </div>
+      </div>
+
+      <!-- Next steps -->
+      <div class="bg-white rounded-xl overflow-hidden flex flex-col md:flex-row mb-10 border border-outline-variant/10 shadow-sm">
+        <div class="md:w-1/4 bg-primary/10 flex items-center justify-center p-8">
+          <span class="text-6xl">🎯</span>
+        </div>
+        <div class="flex-1 p-8">
+          <h3 class="font-serif text-2xl mb-5">Before Your Real Interview</h3>
+          <p class="text-on-surface-variant leading-relaxed" id="r-next-txt">—</p>
+        </div>
+      </div>
+
+      <!-- Transcript -->
+      <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm mb-8" id="r-transcript">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-outline-variant/20">
+          <span class="font-serif text-xl text-on-surface">📝 Full Interview Transcript</span>
+          <button onclick="downloadTranscript()" class="flex items-center gap-2 text-xs bg-primary/10 text-primary px-4 py-2 rounded-full font-semibold hover:bg-primary/20 transition-colors border border-primary/20">
+            <span class="material-symbols-outlined text-sm">download</span>Download
+          </button>
+        </div>
+        <div class="space-y-5 max-h-96 overflow-y-auto pr-2" id="r-transcript-items">
+          <p class="text-sm text-on-surface-variant italic">Transcript loading...</p>
+        </div>
+      </div>
+
+      <!-- Proctor -->
+      <div class="bg-error-container/30 rounded-xl p-8 border border-error/20 mb-8" id="r-proctor">
+        <div class="flex items-center gap-3 mb-4 pb-4 border-b border-error/20">
+          <span class="material-symbols-outlined text-error">security</span>
+          <span class="font-bold text-sm uppercase tracking-widest text-error">Proctoring Report</span>
+        </div>
+        <div id="r-proctor-items">
+          <p class="text-sm text-on-surface-variant">Loading...</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="flex flex-col md:flex-row justify-between items-center text-xs text-on-surface-variant border-t border-outline-variant/10 pt-8">
+        <p>© 2024 CampusPrep. All interview data is processed locally and never stored.</p>
+        <div class="flex gap-6 mt-3 md:mt-0">
+          <a href="#" class="hover:text-primary transition-colors">Privacy</a>
+          <a href="#" class="hover:text-primary transition-colors">About</a>
+        </div>
+      </footer>
+    </main>
   </div>
 </div>
 
@@ -637,313 +773,351 @@ const S={
   resumeText:'',resumeB64:'',resumeMime:'',
   qPer:5,round:'tech',
   questions:{tech:[],hr:[]},
-  qIdx:0,            // main question index
-  followUpMode:false, // are we in a follow-up?
+  qIdx:0,followUpMode:false,
   answers:{tech:[],hr:[]},
   scores:{tech:[],hr:[]},
-  allScores:[],       // chronological scores for bar chart
-  allLabels:[],       // labels for bar chart
+  allScores:[],allLabels:[],
   dims:{comm:[],rel:[],depth:[],face:[]},
-  faceScores:[],
-  transcript:[],      // {round,q,a,score}
+  faceScores:[],transcript:[],
   busy:false,
-  timerID:null,elapsed:0,
   qTimerID:null,qElapsed:0,qLimit:180,
+  globalTimerID:null,elapsed:0,
   camStream:null,camActive:false,preStream:null,
-  recognition:null,
-  finalTranscript:'',interimTranscript:'',
+  recognition:null,finalTranscript:'',
   inputMode:'text',
-  violations:[],violCount:0,maxViol:3,terminated:false,
+  violations:[],violCount:0,maxViol:3,terminated:false,generateReportCalled:false,
   ttsVoice:null
 };
 
 const TECH_I={name:'Rahul Verma',role:'Sr. Engineer · 8 yrs',emoji:'👨‍💼'};
-const HR_I={name:'Sneha Kapoor',role:'HR Manager',emoji:'👩‍💼'};
-
+const HR_I={name:'Sneha Kapoor',role:'HR Manager · Campus',emoji:'👩‍💼'};
 const PERS_DESC={
-  easy:'Ask straightforward, beginner-friendly questions. Be warm, supportive, and encouraging. Questions should be simple and clearly stated.',
-  medium:'Ask moderately challenging questions. Be professional and neutral. Include some probing follow-ups.',
-  hard:'Ask tough, challenging questions. Be direct, skeptical, and press for specifics. Include stress questions and challenge weak answers.'
+  easy:'Ask straightforward, friendly, beginner-level questions. Be warm and encouraging.',
+  medium:'Ask moderately challenging questions. Be professional and neutral.',
+  hard:'Ask tough, challenging questions. Be direct and skeptical. Press for specifics. Always include a follow-up.'
 };
+
+// ══ SCREEN NAV ══
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active')});
+  const el=document.getElementById(id);
+  el.classList.add('active');
+}
+
+function showSetup(){
+  document.getElementById('heroSetupForm').scrollIntoView({behavior:'smooth'});
+}
 
 // ══ SETUP ══
 function setPers(p,btn){
   S.personality=p;
-  document.querySelectorAll('.pers-btn').forEach(b=>b.className='pers-btn');
-  btn.className=`pers-btn sel-${p}`;
+  document.querySelectorAll('.pers-btn').forEach(b=>{
+    b.className='pers-btn py-3 px-2 rounded-xl border-2 border-outline-variant/30 text-on-surface-variant text-xs font-bold hover:border-primary/40 transition-all';
+  });
+  btn.className=`pers-btn active-pers py-3 px-2 rounded-xl border-2 border-primary text-primary text-xs font-bold transition-all ${p==='easy'?'bg-primary-fixed/40':p==='medium'?'bg-secondary-container/50':'bg-error-container/40'}`;
 }
-function setQ(v){S.qPer=parseInt(v);document.getElementById('qNum').textContent=v;document.getElementById('qLbl').textContent=`${v} questions`}
+
 function onResume(e){
   const f=e.target.files[0];if(!f)return;
-  document.getElementById('rzP').style.display='none';
-  document.getElementById('rzD').classList.add('show');
-  document.getElementById('rzN').textContent=f.name;
-  if(f.type==='application/pdf'){const r=new FileReader();r.onload=()=>{S.resumeB64=r.result.split(',')[1];S.resumeMime='application/pdf'};r.readAsDataURL(f);}
-  else{const r=new FileReader();r.onload=()=>{S.resumeText=r.result};r.readAsText(f);}
+  document.getElementById('h-rz-prompt').style.display='none';
+  document.getElementById('h-rz-done').classList.remove('hidden');
+  document.getElementById('h-rz-done').classList.add('flex');
+  document.getElementById('h-rz-name').textContent=f.name;
+  if(f.type==='application/pdf'){
+    const r=new FileReader();r.onload=()=>{S.resumeB64=r.result.split(',')[1];S.resumeMime='application/pdf'};r.readAsDataURL(f);
+  }else{
+    const r=new FileReader();r.onload=()=>{S.resumeText=r.result};r.readAsText(f);
+  }
+}
+
+async function goPrecheck(){
+  S.apiKey=document.getElementById('h-api').value.trim();
+  S.name=document.getElementById('h-name').value.trim();
+  S.role=document.getElementById('h-role').value.trim();
+  S.college=document.getElementById('h-college').value.trim();
+  S.qPer=parseInt(document.getElementById('h-qslider').value);
+
+  if(!S.apiKey) return alert('Please enter your Gemini API key.');
+  if(!S.name) return alert('Please enter your name.');
+  if(!S.role) return alert('Please enter the role you\'re applying for.');
+  if(!S.resumeB64&&!S.resumeText) return alert('Please upload your resume.');
+
+  const btn=document.getElementById('h-go-btn');
+  btn.disabled=true;
+  btn.querySelector('.btn-txt').classList.add('hidden');
+  btn.querySelector('.btn-spin').classList.remove('hidden');
+  btn.querySelector('.btn-arrow').classList.add('hidden');
+
+  try{
+    const resume=await extractResume();
+    const qs=await geminiJSON(`Campus interview for ${S.name} applying to "${S.role}" from ${S.college||'India'}.
+Difficulty: ${S.personality}. ${PERS_DESC[S.personality]}
+Resume: ${resume.substring(0,2500)}
+Generate exactly ${S.qPer} TECHNICAL questions and ${S.qPer} HR questions.
+TECHNICAL: reference specific resume projects/skills, role-specific, practical.
+HR: tell me about yourself, strengths, situational. Last HR question must be: "Do you have any questions for us?"
+Return ONLY valid JSON no markdown: {"tech":["q1","q2"...],"hr":["q1","q2"...]}`);
+    S.questions=qs;
+    initTTS();
+    show('s-precheck');
+  }catch(err){
+    alert('Error: '+err.message);
+    btn.disabled=false;
+    btn.querySelector('.btn-txt').classList.remove('hidden');
+    btn.querySelector('.btn-spin').classList.add('hidden');
+    btn.querySelector('.btn-arrow').classList.remove('hidden');
+  }
 }
 
 // ══ PRECHECK ══
-async function goPrecheck(){
-  S.apiKey=document.getElementById('apiKey').value.trim();
-  S.name=document.getElementById('candName').value.trim();
-  S.role=document.getElementById('targetRole').value.trim();
-  S.college=document.getElementById('college').value.trim();
-  if(!S.apiKey) return alert('Please enter your Gemini API key.');
-  if(!S.name) return alert('Please enter your name.');
-  if(!S.role) return alert('Please enter the role.');
-  if(!S.resumeB64&&!S.resumeText) return alert('Please upload your resume.');
-
-  const btn=document.getElementById('goBtn');btn.disabled=true;btn.classList.add('loading');
-  try{
-    const resume=await extractResume();
-    const qs=await geminiJSON(`You are a campus recruitment interviewer.
-Candidate: ${S.name}, applying for: "${S.role}", from: ${S.college||'India'}.
-Difficulty: ${S.personality}. ${PERS_DESC[S.personality]}
-Resume: ${resume.substring(0,2500)}
-
-Generate exactly ${S.qPer} TECHNICAL questions and ${S.qPer} HR questions.
-TECHNICAL: must reference specific resume projects/skills, be role-specific.
-HR: include "Tell me about yourself", strengths/weaknesses, situational. Last HR question must be exactly: "Do you have any questions for us?"
-Return ONLY valid JSON, no markdown: {"tech":["q1","q2"...],"hr":["q1","q2"...]}`);
-    S.questions=qs;
-    document.getElementById('setup').style.display='none';
-    document.getElementById('precheck').classList.add('show');
-    initTTS();
-  }catch(err){alert('Error generating questions: '+err.message);btn.disabled=false;btn.classList.remove('loading');}
-}
-
 async function startPreCam(){
   try{
     S.preStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-    document.getElementById('preVid').srcObject=S.preStream;
-    document.getElementById('preOverlay').style.display='none';
-    document.getElementById('pCamBtn').textContent='✓ Camera On';
-    document.getElementById('pCamBtn').classList.add('on');
-    document.getElementById('fsBtn').disabled=false;
+    document.getElementById('pc-vid').srcObject=S.preStream;
+    document.getElementById('pc-overlay').style.display='none';
+    document.getElementById('pc-cam-txt').textContent='✓ Camera On';
+    document.getElementById('pc-cam-btn').className='w-full mb-3 py-3 rounded-xl border-2 border-tertiary/50 text-tertiary text-sm font-semibold transition-all flex items-center justify-center gap-2';
+    document.getElementById('pc-start-btn').disabled=false;
     S.camActive=true;
-  }catch(e){alert('Camera access denied: '+e.message);}
+  }catch(e){
+    alert('Camera access denied: '+e.message+'\nYou can still continue without camera.');
+    document.getElementById('pc-start-btn').disabled=false;
+  }
 }
 
 async function startIV(){
   try{await document.documentElement.requestFullscreen();}catch(e){}
   if(S.preStream) S.preStream.getTracks().forEach(t=>t.stop());
-  document.getElementById('precheck').classList.remove('show');
-  document.getElementById('iv').classList.add('show');
+  show('s-iv');
+  document.getElementById('s-iv').style.display='flex';
 
   if(S.camActive){
     try{
       S.camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-      const vid=document.getElementById('candVid');vid.srcObject=S.camStream;vid.style.display='block';
-      document.getElementById('candPH').style.display='none';
+      const vid=document.getElementById('iv-cand-vid');vid.srcObject=S.camStream;vid.style.display='block';
+      document.getElementById('iv-cand-ph').style.display='none';
     }catch(e){S.camActive=false;}
   }
 
   initProctoring();
   buildDots('tech');
+  buildProg();
   startGlobalTimer();
   enableInput(true);
   await beginRound('tech');
 }
 
-// ══ TTS (AI Voice) ══
+// ══ TTS ══
 function initTTS(){
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged=()=>{
+  const load=()=>{
     const voices=window.speechSynthesis.getVoices();
-    S.ttsVoice=voices.find(v=>v.lang==='en-IN')||voices.find(v=>v.lang.startsWith('en-')&&v.name.includes('Male'))||voices.find(v=>v.lang.startsWith('en-'))||voices[0]||null;
+    S.ttsVoice=voices.find(v=>v.lang==='en-IN')||voices.find(v=>v.lang.startsWith('en-')&&v.name.toLowerCase().includes('male'))||voices.find(v=>v.lang.startsWith('en-'))||voices[0]||null;
   };
+  window.speechSynthesis.onvoiceschanged=load;
+  load();
 }
 
-function speak(text, onEnd){
+function speak(text,onEnd){
   window.speechSynthesis.cancel();
-  const utt=new SpeechSynthesisUtterance(text);
-  if(S.ttsVoice) utt.voice=S.ttsVoice;
-  utt.lang='en-IN';
-  utt.rate=0.92;
-  utt.pitch=1.0;
-  utt.volume=1.0;
+  const u=new SpeechSynthesisUtterance(text);
+  if(S.ttsVoice) u.voice=S.ttsVoice;
+  u.lang='en-IN';u.rate=0.93;u.pitch=1;u.volume=1;
   showWave(true);
-  utt.onend=()=>{showWave(false);if(onEnd) onEnd();};
-  utt.onerror=()=>{showWave(false);if(onEnd) onEnd();};
-  window.speechSynthesis.speak(utt);
+  u.onend=()=>{showWave(false);if(onEnd)onEnd();};
+  u.onerror=()=>{showWave(false);if(onEnd)onEnd();};
+  window.speechSynthesis.speak(u);
 }
 
-function showWave(on){document.getElementById('aiWave').style.display=on?'flex':'none';}
+function showWave(on){
+  const w=document.getElementById('iv-wave');
+  w.style.display=on?'flex':'none!important';
+  if(on) w.style.display='flex';
+  else w.style.cssText='display:none!important';
+}
 
 // ══ PROCTORING ══
 function initProctoring(){
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&!S.terminated) handleViol('Tab switch detected');});
-  window.addEventListener('blur',()=>{if(!S.terminated) handleViol('Window focus lost');});
-  document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!S.terminated) handleViol('Fullscreen exited');});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&!S.terminated)handleViol('Tab switch detected');});
+  window.addEventListener('blur',()=>{if(!S.terminated)handleViol('Window focus lost');});
+  document.addEventListener('fullscreenchange',()=>{
+    if(!document.fullscreenElement&&!S.terminated&&!S.generateReportCalled){
+      // Show warning banner briefly, then re-enter fullscreen
+      const ban=document.getElementById('iv-vbanner');
+      ban.textContent='⚠ Please stay in fullscreen! Re-entering fullscreen...';
+      ban.classList.add('show');
+      setTimeout(()=>{
+        document.documentElement.requestFullscreen().catch(()=>{});
+        setTimeout(()=>ban.classList.remove('show'),2000);
+      },1200);
+    }
+  });
 }
 
 function handleViol(reason){
-  if(S.terminated) return;
+  if(S.terminated)return;
   S.violCount++;
   const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   S.violations.push({reason,time,count:S.violCount});
-  const vlog=document.getElementById('vlog');
+
+  const vlog=document.getElementById('iv-vlog');
   if(vlog.children.length===1&&vlog.children[0].textContent==='No violations') vlog.innerHTML='';
   const item=document.createElement('div');
-  item.className=`vlog-item ${S.violCount>=2?'crit':'warn'}`;
-  item.textContent=`[${time}] ${reason} #${S.violCount}`;
+  item.className=`text-xs px-3 py-2 rounded-lg font-mono border ${S.violCount>=2?'bg-error-container/50 border-error/30 text-error':'bg-yellow-50 border-yellow-200 text-yellow-700'}`;
+  item.textContent=`[${time}] #${S.violCount}: ${reason}`;
   vlog.insertBefore(item,vlog.firstChild);
-  const ban=document.getElementById('vbanner');
-  if(S.violCount>=S.maxViol){ban.textContent='⛔ Maximum violations reached. Interview terminated.';ban.classList.add('show');S.terminated=true;enableInput(false);stopQTimer();setTimeout(()=>generateReport(),2000);}
-  else{ban.textContent=`⚠ Violation ${S.violCount}/${S.maxViol}: ${reason}`;ban.classList.add('show');setTimeout(()=>ban.classList.remove('show'),4000);}
+
+  const ban=document.getElementById('iv-vbanner');
+  if(S.violCount>=S.maxViol){
+    ban.textContent='⛔ Maximum violations reached. Interview terminated.';
+    ban.classList.add('show');
+    S.terminated=true;
+    enableInput(false);
+    stopQTimer();
+    setTimeout(()=>generateReport(),2000);
+  }else{
+    ban.textContent=`⚠ Violation ${S.violCount}/${S.maxViol}: ${reason}`;
+    ban.classList.add('show');
+    setTimeout(()=>ban.classList.remove('show'),4000);
+  }
 }
 
-// ══ Q TIMER (3 min per question) ══
+// ══ Q TIMER ══
 function startQTimer(){
-  stopQTimer();
-  S.qElapsed=0;
-  updateQTimerUI();
+  stopQTimer();S.qElapsed=0;updateTimerUI();
   S.qTimerID=setInterval(()=>{
-    S.qElapsed++;
-    updateQTimerUI();
-    if(S.qElapsed>=S.qLimit){
-      stopQTimer();
-      autoSubmit();
-    }
+    S.qElapsed++;updateTimerUI();
+    if(S.qElapsed>=S.qLimit){stopQTimer();autoSubmit();}
   },1000);
 }
 
 function stopQTimer(){clearInterval(S.qTimerID);S.qTimerID=null;}
 
-function updateQTimerUI(){
-  const remaining=S.qLimit-S.qElapsed;
-  const m=Math.floor(remaining/60);
-  const s=remaining%60;
-  const numEl=document.getElementById('timerNum');
-  numEl.textContent=`${m}:${String(s).padStart(2,'0')}`;
-  numEl.className='q-timer-num'+(remaining<=30?' crit':remaining<=60?' warn':'');
-
-  // Update SVG ring
-  const circumference=126;
-  const progress=S.qElapsed/S.qLimit;
-  const offset=circumference*progress;
-  const ring=document.getElementById('timerRing');
-  ring.style.strokeDashoffset=offset;
-  ring.style.stroke=remaining<=30?'var(--red)':remaining<=60?'var(--orange)':'var(--tech)';
+function updateTimerUI(){
+  const rem=S.qLimit-S.qElapsed;
+  const m=Math.floor(rem/60),s=rem%60;
+  const el=document.getElementById('iv-q-timer');
+  el.textContent=`${m}:${String(s).padStart(2,'0')}`;
+  el.style.color=rem<=30?'#ba1a1a':rem<=60?'#f97316':'#1c1c19';
+  const ring=document.getElementById('iv-timer-ring');
+  const circ=138.2;
+  ring.style.strokeDashoffset=(S.qElapsed/S.qLimit)*circ;
+  ring.style.stroke=rem<=30?'#ba1a1a':rem<=60?'#f97316':'#874d33';
 }
 
 function autoSubmit(){
-  const ta=document.getElementById('ansTA');
-  const ans=ta.value.trim()||(S.inputMode==='voice'?S.finalTranscript.trim():'');
-  if(ans){
-    ta.value='';
-    processAnswer(ans+'[auto-submitted after 3 min]');
-  } else {
-    processAnswer('[No answer provided — time expired]');
-  }
+  const ta=document.getElementById('iv-ans-ta');
+  const ans=ta.value.trim()||S.finalTranscript.trim();
+  ta.value='';
+  processAnswer(ans||'[No answer — time expired]');
 }
 
-// ══ VOICE — FIXED ══
+// ══ VOICE ══
 function setMode(m){
   S.inputMode=m;
-  document.getElementById('mText').className=`mmode${m==='text'?' on':''}`;
-  document.getElementById('mVoice').className=`mmode${m==='voice'?' on':''}`;
-  document.getElementById('textPanel').style.display=m==='text'?'block':'none';
-  document.getElementById('voicePanel').style.display=m==='voice'?'block':'none';
+  const textOn='flex-1 py-2 rounded-xl text-xs font-bold border-2 border-primary bg-primary-fixed/30 text-primary transition-all flex items-center justify-center gap-1.5';
+  const textOff='flex-1 py-2 rounded-xl text-xs font-bold border-2 border-outline-variant/30 text-on-surface-variant hover:border-primary/30 transition-all flex items-center justify-center gap-1.5';
+  document.getElementById('iv-m-text').className=m==='text'?textOn:textOff;
+  document.getElementById('iv-m-voice').className=m==='voice'?textOn:textOff;
+  document.getElementById('iv-text-panel').style.display=m==='text'?'block':'none';
+  document.getElementById('iv-voice-panel').style.display=m==='voice'?'block':'none';
 }
 
 function toggleMic(){
   if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
-    alert('Voice input requires Google Chrome. Please switch to Chrome.');return;
+    alert('Voice input requires Google Chrome.');return;
   }
-  if(S.recognition&&S.recognition.active){
-    S.recognition.stop();return;
-  }
-  startRecognition();
+  if(S.recognition&&S.recognition.active){S.recognition.stop();return;}
+  startRec();
 }
 
-function startRecognition(){
+function startRec(){
+  // Don't start if busy evaluating or terminated
+  if(S.busy||S.terminated) return;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const rec=new SR();
-  rec.continuous=true;
-  rec.interimResults=true;
-  rec.lang='en-IN';
-  rec.maxAlternatives=1;
+  rec.continuous=true;rec.interimResults=true;rec.lang='en-IN';rec.maxAlternatives=1;
   rec.active=true;
+  rec.shouldRestart=true; // restart on natural silence-end
   S.recognition=rec;
 
-  document.getElementById('micB').className='mic-b rec';
-  renderTranscript('','Listening — speak now...');
+  const micBtn=document.getElementById('iv-mic-btn');
+  micBtn.style.cssText='animation:micPulse 1s infinite;border-color:rgb(186,26,26);background:rgba(186,26,26,0.1);color:rgb(186,26,26)';
+  if(!S.finalTranscript) renderVBox('','Listening — speak now...');
 
-  rec.onresult=(event)=>{
+  rec.onresult=(e)=>{
     let interim='';
-    // Only process new results from resultIndex onwards
-    for(let i=event.resultIndex;i<event.results.length;i++){
-      if(event.results[i].isFinal){
-        S.finalTranscript+=event.results[i][0].transcript+' ';
-      } else {
-        interim+=event.results[i][0].transcript;
-      }
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) S.finalTranscript+=e.results[i][0].transcript+' ';
+      else interim+=e.results[i][0].transcript;
     }
-    renderTranscript(S.finalTranscript,interim);
+    renderVBox(S.finalTranscript,interim);
     if(S.finalTranscript.trim()){
-      document.getElementById('vSend').classList.add('show');
-      document.getElementById('vClear').classList.add('show');
+      document.getElementById('iv-vsend').classList.remove('hidden');
+      document.getElementById('iv-vclear').classList.remove('hidden');
     }
   };
 
   rec.onerror=(e)=>{
     rec.active=false;
-    document.getElementById('micB').className='mic-b';
     if(e.error==='no-speech'){
-      // Auto-restart on no-speech
-      setTimeout(()=>{if(S.inputMode==='voice'&&!S.busy) startRecognition();},500);
+      // Chrome stops on silence — silently restart
+      if(rec.shouldRestart&&S.inputMode==='voice'&&!S.busy&&!S.terminated)
+        setTimeout(()=>startRec(),200);
     } else if(e.error==='network'){
-      renderTranscript(S.finalTranscript,'Network error — retrying...');
-      setTimeout(()=>{if(S.inputMode==='voice'&&!S.busy) startRecognition();},1000);
+      resetMicBtn();
+      setTimeout(()=>{if(rec.shouldRestart&&S.inputMode==='voice'&&!S.busy&&!S.terminated)startRec();},1000);
+    } else if(e.error==='not-allowed'){
+      resetMicBtn();
+      renderVBox(S.finalTranscript,'Microphone access denied. Please allow mic in browser settings.');
     } else {
-      renderTranscript(S.finalTranscript,`Error: ${e.error}. Click mic to retry.`);
+      resetMicBtn();
+      renderVBox(S.finalTranscript,'Error: '+e.error+'. Click mic to retry.');
     }
   };
 
   rec.onend=()=>{
     rec.active=false;
-    document.getElementById('micB').className='mic-b';
-    // Auto-restart if still in voice mode and not submitting
-    if(S.inputMode==='voice'&&!S.busy&&!S.terminated){
-      setTimeout(()=>startRecognition(),300);
+    if(rec.shouldRestart&&S.inputMode==='voice'&&!S.busy&&!S.terminated){
+      setTimeout(()=>startRec(),200);
+    } else {
+      resetMicBtn();
     }
   };
 
-  rec.start();
+  try{rec.start();}catch(e){resetMicBtn();}
 }
 
-function stopRecognition(){
-  if(S.recognition){S.recognition.active=false;try{S.recognition.stop();}catch(e){}}
+function resetMicBtn(){
+  const btn=document.getElementById('iv-mic-btn');
+  btn.style.cssText='';
 }
 
-function renderTranscript(final,interim){
-  const box=document.getElementById('vBox');
+function stopRec(){
+  if(S.recognition){
+    S.recognition.shouldRestart=false; // prevent auto-restart
+    S.recognition.active=false;
+    try{S.recognition.stop();}catch(e){}
+  }
+  resetMicBtn();
+}
+
+function renderVBox(final,interim){
+  const box=document.getElementById('iv-vbox');
   box.innerHTML='';
-  if(final){
-    const f=document.createElement('span');f.className='final';f.textContent=final;box.appendChild(f);
-  }
-  if(interim){
-    const i=document.createElement('span');i.className='interim';i.textContent=interim;box.appendChild(i);
-  }
-  if(!final&&!interim){
-    const h=document.createElement('span');h.className='voice-hint';h.textContent='Press mic to start speaking...';box.appendChild(h);
-  }
+  if(final){const s=document.createElement('span');s.className='text-on-surface';s.textContent=final;box.appendChild(s);}
+  if(interim){const s=document.createElement('span');s.className='interim-text';s.textContent=interim;box.appendChild(s);}
+  if(!final&&!interim){const s=document.createElement('span');s.className='text-outline italic';s.textContent='Press mic to start speaking...';box.appendChild(s);}
 }
 
 function sendVoice(){
-  const ans=S.finalTranscript.trim();
-  if(!ans){alert('Please speak your answer first.');return;}
-  stopRecognition();
-  clearVoice();
-  processAnswer(ans);
+  const ans=S.finalTranscript.trim();if(!ans){alert('Please speak your answer first.');return;}
+  stopRec();clearVoice();processAnswer(ans);
 }
 
 function clearVoice(){
-  S.finalTranscript='';S.interimTranscript='';
-  renderTranscript('','');
-  document.getElementById('vSend').classList.remove('show');
-  document.getElementById('vClear').classList.remove('show');
+  S.finalTranscript='';renderVBox('','');
+  document.getElementById('iv-vsend').classList.add('hidden');
+  document.getElementById('iv-vclear').classList.add('hidden');
 }
 
 // ══ API ══
@@ -951,9 +1125,10 @@ async function gemini(prompt){
   const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.apiKey}`,
     {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
   if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API error');}
-  return res.json().then(d=>d.candidates[0].content.parts[0].text.trim());
+  return(await res.json()).candidates[0].content.parts[0].text.trim();
 }
 async function geminiJSON(p){return JSON.parse((await gemini(p)).replace(/```json|```/g,'').trim());}
+
 async function extractResume(){
   if(S.resumeText) return S.resumeText;
   if(S.resumeB64){
@@ -966,13 +1141,10 @@ async function extractResume(){
   return 'No resume.';
 }
 
-async function analyzeFace(frameB64,q,ans){
-  if(!frameB64) return null;
+async function analyzeFace(b64,q,ans){
+  if(!b64) return null;
   try{
-    const body={contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:frameB64}},{text:`Analyze this candidate face during a job interview.
-Question: ${q}
-Answer: ${ans.substring(0,150)}
-Return ONLY JSON: {"eyeContact":<0-100>,"confidence":<0-100>,"expression":<0-100>,"overall":<0-100>,"note":"<short observation>"}`}]}]};
+    const body={contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:b64}},{text:`Analyze candidate face during interview.\nQuestion: ${q}\nAnswer: ${ans.substring(0,150)}\nReturn ONLY JSON: {"eyeContact":<0-100>,"confidence":<0-100>,"expression":<0-100>,"overall":<0-100>,"note":"<observation>"}`}]}]};
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok) return null;
     return JSON.parse((await res.json()).candidates[0].content.parts[0].text.trim().replace(/```json|```/g,'').trim());
@@ -981,52 +1153,50 @@ Return ONLY JSON: {"eyeContact":<0-100>,"confidence":<0-100>,"expression":<0-100
 
 function captureFrame(){
   if(!S.camActive) return null;
-  const vid=document.getElementById('candVid');
-  const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;
-  const ctx=canvas.getContext('2d');ctx.drawImage(vid,0,0,320,240);
-  return canvas.toDataURL('image/jpeg',0.7).split(',')[1];
+  const vid=document.getElementById('iv-cand-vid');
+  const c=document.createElement('canvas');c.width=320;c.height=240;
+  c.getContext('2d').drawImage(vid,0,0,320,240);
+  return c.toDataURL('image/jpeg',0.7).split(',')[1];
 }
 
 // ══ INTERVIEW FLOW ══
 async function beginRound(round){
   S.round=round;S.qIdx=0;S.followUpMode=false;S.busy=false;
   const I=round==='tech'?TECH_I:HR_I;
-  document.getElementById('rbLbl').textContent=round==='tech'?'Technical Round':'HR Round';
-  document.getElementById('rb').className=`rb ${round}`;
-  document.getElementById('aiEmoji').textContent=I.emoji;
-  document.getElementById('aiTag').textContent=`${I.name} · ${round==='tech'?'Technical':'HR'}`;
-  document.getElementById('iLbl').textContent=I.name;
-  buildDots(round);
+
+  document.getElementById('iv-round-lbl').textContent=round==='tech'?'Technical Round':'HR Round';
+  document.getElementById('iv-i-emoji').textContent=I.emoji;
+  document.getElementById('iv-ai-emoji').textContent=I.emoji;
+  document.getElementById('iv-i-name').textContent=I.name;
+  document.getElementById('iv-i-role').textContent=I.role;
+  document.getElementById('iv-ai-nametag').textContent=`${I.name} · ${round==='tech'?'Technical':'HR'}`;
+  document.getElementById('iv-i-lbl').textContent=I.name;
+  buildDots(round);buildProg();
 
   const opener=round==='tech'
-    ?`Hello ${S.name}! I'm ${I.name}. I've had a look at your resume. Let's begin the technical round for the ${S.role} position.`
-    :`Hi ${S.name}! I'm ${I.name} from HR. Great performance in the technical round! Let's have a relaxed chat now.`;
-  setQDisplay('Interviewer speaking...',opener);
+    ?`Hello ${S.name}! I'm ${I.name}. I've reviewed your resume — looks interesting! Let's get into the technical questions for ${S.role}.`
+    :`Hi ${S.name}! I'm ${I.name} from HR. Great work in the technical round! Let's have a more relaxed conversation. Ready?`;
+
+  setQDisplay('Interviewer is speaking...',opener);
   speak(opener,()=>askQ(round,0));
 }
 
 async function askQ(round,idx){
   if(S.terminated) return;
-  // idx is the MAIN question index — follow-ups don't increment this
-  S.qIdx=idx;
-  S.followUpMode=false;
+  S.qIdx=idx;S.followUpMode=false;
   const q=S.questions[round][idx];
   if(!q){await endRound(round);return;}
 
   updateDots(round,idx);
-  const label=`Q${idx+1} of ${S.qPer} · ${round==='tech'?'Technical':'HR'}`;
-  setQDisplay(label,q);
-  document.getElementById('hint').textContent=`// Q${idx+1}/${S.qPer} · ${S.inputMode==='voice'?'Speak now':'Type + Enter'}`;
-
+  setQDisplay(`Question ${idx+1} of ${S.qPer} · ${round==='tech'?'Technical':'HR'}`,q);
+  document.getElementById('iv-hint').textContent=`// Q${idx+1}/${S.qPer} · ${S.inputMode==='voice'?'Speak your answer':'Type + Enter to send'}`;
   startQTimer();
   enableInput(true);
-
-  // Speak the question
   speak(q);
 }
 
 async function sendAnswer(){
-  const el=document.getElementById('ansTA');
+  const el=document.getElementById('iv-ans-ta');
   const ans=el.value.trim();
   if(!ans||S.busy||S.terminated) return;
   el.value='';el.style.height='auto';
@@ -1036,29 +1206,25 @@ async function sendAnswer(){
 async function processAnswer(ans){
   if(S.busy||S.terminated) return;
   S.busy=true;
-  stopQTimer();
-  stopRecognition();
-  enableInput(false);
+  stopQTimer();stopRec();enableInput(false);
   window.speechSynthesis.cancel();
-  document.getElementById('hint').textContent='// Evaluating...';
+  document.getElementById('iv-hint').textContent='// Evaluating your answer...';
 
-  const currentQ=S.questions[S.round][S.qIdx];
+  const q=S.questions[S.round][S.qIdx];
   const frame=captureFrame();
 
   try{
     const[ev,faceEv]=await Promise.all([
-      geminiJSON(`Evaluate this campus interview answer for "${S.role}".
-Interviewer personality: ${S.personality}. ${PERS_DESC[S.personality]}
+      geminiJSON(`Evaluate campus interview answer for "${S.role}". Difficulty: ${S.personality}. ${PERS_DESC[S.personality]}
 Round: ${S.round==='tech'?'Technical':'HR'}
-Question: ${currentQ}
+Question: ${q}
 Answer: ${ans}
 Be honest and strict. Return ONLY JSON:
-{"score":<0-100>,"communication":<0-100>,"relevance":<0-100>,"depth":<0-100>,"feedback":"<1 direct sentence>","reaction":"<2-4 word natural interviewer reaction, e.g. Good point. / Interesting. / I see.>","followUp":"<one short follow-up question if ${S.personality==='hard'?'always generate one':'answer was vague or interesting'}, else empty string>"}`),
-      analyzeFace(frame,currentQ,ans)
+{"score":<0-100>,"communication":<0-100>,"relevance":<0-100>,"depth":<0-100>,"feedback":"<1 direct sentence>","reaction":"<2-4 word natural reaction e.g. Good point. / Interesting. / I see.>","followUp":"<follow-up question if ${S.personality==='hard'?'always needed':'answer was vague'}, else empty string>"}`),
+      analyzeFace(frame,q,ans)
     ]);
 
-    // Save to transcript
-    S.transcript.push({round:S.round,qIdx:S.qIdx,q:currentQ,a:ans,score:ev.score,feedback:ev.feedback});
+    S.transcript.push({round:S.round,qIdx:S.qIdx,q,a:ans,score:ev.score,feedback:ev.feedback});
     S.scores[S.round].push(ev.score);
     S.allScores.push(ev.score);
     S.allLabels.push(`${S.round==='tech'?'T':'H'}${S.qIdx+1}`);
@@ -1068,69 +1234,109 @@ Be honest and strict. Return ONLY JSON:
 
     if(faceEv){S.dims.face.push(faceEv.overall);S.faceScores.push(faceEv);updateFacePills(faceEv);}
 
-    // Speak reaction
     speak(ev.reaction);
     updateScores();
     addFeedback(ev.feedback,ev.score);
 
     const nextIdx=S.qIdx+1;
     const hasMore=nextIdx<S.questions[S.round].length;
-    const doFollowUp=ev.followUp&&!S.followUpMode&&hasMore&&(S.personality==='hard'||Math.random()>0.45);
+    const doFU=ev.followUp&&!S.followUpMode&&hasMore&&(S.personality==='hard'||Math.random()>0.45);
 
-    await sleep(800);
+    await sleep(900);
 
-    if(doFollowUp){
+    if(doFU){
       S.followUpMode=true;
       setQDisplay(`Follow-up · Q${S.qIdx+1}`,ev.followUp);
       speak(ev.followUp);
-      startQTimer();
-      enableInput(true);
-      document.getElementById('hint').textContent='// Follow-up — answer it';
-    } else if(hasMore){
+      startQTimer();enableInput(true);
+      document.getElementById('iv-hint').textContent='// Follow-up — answer it';
+    }else if(hasMore){
       await askQ(S.round,nextIdx);
-    } else {
+    }else{
       await endRound(S.round);
     }
 
   }catch(err){
     console.error(err);
-    const msg=err.message.includes('quota')?'API quota reached. Please check your Gemini account.':'Technical issue. Please resend your answer.';
+    const msg=err.message.includes('quota')?'API quota reached. Please check your Gemini account.':'Technical issue — please resend your answer.';
     speak(msg);
     setQDisplay('Issue',msg);
-    startQTimer();
-    enableInput(true);
-    document.getElementById('hint').textContent='// Please try again';
+    startQTimer();enableInput(true);
+    document.getElementById('iv-hint').textContent='// Please try again';
   }
-
   S.busy=false;
 }
 
 async function endRound(round){
   enableInput(false);stopQTimer();
   const avg=calcAvg(S.scores[round]);
+
   if(round==='tech'){
-    const msg=`That completes the technical round, ${S.name}. Your score is ${avg} out of 100. You'll now move to the HR round.`;
-    setQDisplay('Technical Round Complete',msg);speak(msg);
+    const msg=`That wraps up the technical round, ${S.name}. Your score is ${avg} out of 100. You'll now move to the HR round.`;
+    setQDisplay('Technical Round Complete',msg);
+    speak(msg);
     await sleep(1500);
-    const slot=document.getElementById('breakSlot');
-    slot.innerHTML=`<div class="break-card"><div class="break-emoji">🎉</div><div class="break-title">Technical Done!</div><div class="break-sub">Score: ${avg}/100</div><button class="break-btn" onclick="goHR(this)">HR Round →</button></div>`;
-  } else {
-    const msg=`Thank you, ${S.name}! That's everything from my side. We'll get back to you within 3 to 5 working days. All the very best!`;
+
+    // Show break card in sidebar slot (visible on desktop)
+    const slot=document.getElementById('iv-break-slot');
+    const breakHTML=`
+      <div class="m-4 bg-secondary-container rounded-xl p-6 text-center border border-on-secondary-container/10">
+        <div class="text-3xl mb-3">🎉</div>
+        <p class="font-serif text-lg text-on-secondary-container mb-1">Technical Done!</p>
+        <p class="text-sm text-on-secondary-container/70 mb-4">Score: <strong>${avg}/100</strong></p>
+        <button onclick="goHR(this)" class="w-full py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all">Continue to HR Round →</button>
+      </div>`;
+    slot.innerHTML=breakHTML;
+
+    // ALSO show break card in the question area (visible on all screen sizes)
+    setQDisplay('Technical Round Complete!',
+      `Great work! You scored ${avg}/100. Click the button below to continue to the HR round with ${HR_I.name}.`);
+    document.getElementById('iv-hint').textContent='// Technical round complete — click Continue to HR Round';
+
+    // Insert a button below the question area for mobile/when sidebar hidden
+    const existingMobileBreak=document.getElementById('mobile-break-btn');
+    if(existingMobileBreak) existingMobileBreak.remove();
+    const mobileBreak=document.createElement('div');
+    mobileBreak.id='mobile-break-btn';
+    mobileBreak.className='px-6 py-3 bg-surface-container-low border-t border-outline-variant/20 flex-shrink-0';
+    mobileBreak.innerHTML=`<button onclick="goHR(this)" class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2">
+      <span class="material-symbols-outlined text-base">arrow_forward</span>Continue to HR Round
+    </button>`;
+    // Insert before the input area
+    const inputArea=document.getElementById('iv-ans-ta').closest('.bg-surface-container-low');
+    if(inputArea && inputArea.parentNode){
+      inputArea.parentNode.insertBefore(mobileBreak, inputArea);
+    }
+
+  }else{
+    const msg=`Thank you so much, ${S.name}! It was a pleasure speaking with you. We'll be in touch within 3 to 5 working days. All the very best!`;
     setQDisplay('Interview Complete',msg);speak(msg);
     await sleep(2500);
+    S.generateReportCalled=true;
     await generateReport();
   }
 }
 
 function goHR(btn){
-  btn.disabled=true;btn.textContent='Starting...';
-  document.getElementById('breakSlot').innerHTML='';
-  buildDots('hr');beginRound('hr');
+  btn.disabled=true;
+  btn.innerHTML='<span style="opacity:0.7">Starting HR Round...</span>';
+  // Remove both break cards
+  document.getElementById('iv-break-slot').innerHTML='';
+  const mb=document.getElementById('mobile-break-btn');
+  if(mb) mb.remove();
+  buildDots('hr');
+  beginRound('hr');
+}
+
+async function skipToReport(){
+  if(!confirm('End interview early and generate report?')) return;
+  clearInterval(S.globalTimerID);stopQTimer();stopRec();enableInput(false);window.speechSynthesis.cancel();
+  await generateReport();
 }
 
 // ══ REPORT ══
 async function generateReport(){
-  clearInterval(S.timerID);stopQTimer();stopRecognition();enableInput(false);window.speechSynthesis.cancel();
+  clearInterval(S.globalTimerID);stopQTimer();stopRec();enableInput(false);window.speechSynthesis.cancel();
   if(S.camStream) S.camStream.getTracks().forEach(t=>t.stop());
   try{document.exitFullscreen();}catch(e){}
 
@@ -1143,127 +1349,170 @@ async function generateReport(){
   const relAvg=calcAvg(S.dims.rel)||0;
   const depthAvg=calcAvg(S.dims.depth)||0;
 
+  show('s-report');
+
+  // Fill basics
+  document.getElementById('r-name-title').textContent=`${S.name}'s Interview`;
+  document.getElementById('r-role-sub').textContent=`${S.role} · ${S.personality.charAt(0).toUpperCase()+S.personality.slice(1)} Difficulty`;
+  document.getElementById('r-sc-overall').textContent=overall||'—';
+  document.getElementById('r-sc-tech').textContent=techAvg||'—';
+  document.getElementById('r-sc-hr').textContent=hrAvg||'—';
+  document.getElementById('r-sc-face').textContent=faceAvg||'—';
+
+  // Generate AI report
   try{
     const faceInfo=S.faceScores.length>0?`Face: eye ${calcAvg(S.faceScores.map(f=>f.eyeContact))}, conf ${calcAvg(S.faceScores.map(f=>f.confidence))}. Notes: ${S.faceScores.map(f=>f.note).join('; ')}`:'No camera data.';
     const rep=await geminiJSON(`Campus interview for ${S.name} applying to ${S.role}. Difficulty: ${S.personality}.
 Technical: ${techAvg}/100 (${S.scores.tech.length} Qs). HR: ${hrAvg}/100 (${S.scores.hr.length} Qs). Face: ${faceAvg}/100. Overall: ${overall}/100.
 ${faceInfo}
 Return ONLY JSON:
-{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","overall":"<3 sentences>","tech":"<2-3 sentences>","hr":"<2-3 sentences>","face":"<2 sentences>","nextSteps":"<3 actionable steps>"}`);
+{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","overallQ":"<3-sentence editorial assessment as if writing a magazine review>","tech":"<2-3 sentences>","hr":"<2-3 sentences>","face":"<2 sentences>","nextSteps":"<3 actionable steps before real interview>"}`);
 
-    // Build report
-    document.getElementById('repTitle').innerHTML=`${S.name}'s<br><span>Interview Report</span>`;
-    const cls=s=>s>=70?'high':s>=45?'mid':'low';
-    const vc={'Strong Hire':{icon:'🎉',type:'hire',desc:'Outstanding. Very likely to receive an offer.'},'Hire':{icon:'✅',type:'hire',desc:'Solid candidate. Competitive for this role.'},'Borderline':{icon:'⚠️',type:'maybe',desc:'Mixed. A few improvements could change the outcome.'},'Not Ready':{icon:'📚',type:'no',desc:'Needs more preparation.'}}[rep.verdict]||{icon:'⚠️',type:'maybe',desc:''};
+    document.getElementById('r-overall-q').textContent=`"${rep.overallQ}"`;
+    document.getElementById('r-verdict-name').textContent=rep.verdict;
+    document.getElementById('r-verdict-label').textContent=rep.verdict;
 
-    document.getElementById('verdictBlock').innerHTML=`<div class="verdict ${vc.type}"><div class="verdict-icon">${vc.icon}</div><div><div class="verdict-name">${rep.verdict}</div><div class="verdict-desc">${vc.desc}</div></div></div>`;
-    document.getElementById('rGrid').innerHTML=`
-      <div class="r-card ${cls(overall)}"><div class="r-card-n">${overall}</div><div class="r-card-l">Overall</div></div>
-      <div class="r-card ${cls(techAvg)}"><div class="r-card-n">${techAvg}</div><div class="r-card-l">Technical</div></div>
-      <div class="r-card ${cls(hrAvg)}"><div class="r-card-n">${hrAvg||'—'}</div><div class="r-card-l">HR Round</div></div>
-      <div class="r-card ${cls(faceAvg)}"><div class="r-card-n">${faceAvg||'—'}</div><div class="r-card-l">Face</div></div>`;
+    const vd={
+      'Strong Hire':{desc:'Outstanding performance. Very likely to receive an offer.',bg:'bg-secondary-container',color:'text-on-secondary-container'},
+      'Hire':{desc:'Solid candidate. Competitive for this role.',bg:'bg-secondary-container',color:'text-on-secondary-container'},
+      'Borderline':{desc:'Mixed performance. A few improvements could change the outcome.',bg:'bg-primary-fixed',color:'text-primary'},
+      'Not Ready':{desc:'Needs more preparation before the real thing.',bg:'bg-error-container',color:'text-error'}
+    }[rep.verdict]||{desc:'',bg:'bg-secondary-container',color:'text-on-secondary-container'};
 
-    // Charts
-    buildRadarChart(commAvg,relAvg,depthAvg,faceAvg,techAvg,hrAvg);
-    buildBarChart();
+    document.getElementById('r-verdict-desc').textContent=vd.desc;
+    document.getElementById('r-tech-txt').textContent=rep.tech;
+    document.getElementById('r-hr-txt').textContent=rep.hr;
+    document.getElementById('r-face-txt').textContent=rep.face;
+    document.getElementById('r-next-txt').textContent=rep.nextSteps;
 
-    // Improvement areas
-    const dims=[{name:'Communication',val:commAvg},{name:'Relevance',val:relAvg},{name:'Depth',val:depthAvg},{name:'Body Language',val:faceAvg},{name:'Technical',val:techAvg},{name:'HR',val:hrAvg}];
-    const needs=dims.filter(d=>d.val>0&&d.val<65).sort((a,b)=>a.val-b.val);
-    const goods=dims.filter(d=>d.val>=65).sort((a,b)=>b.val-a.val);
-    let iHtml='';
-    if(needs.length) iHtml+=`<div class="improve-card"><div class="improve-label needs">⬇ Needs Improvement</div>${needs.map(d=>`<div class="improve-bar-row"><div class="improve-bar-top"><span>${d.name}</span><span>${d.val}/100</span></div><div class="improve-bar-bg"><div class="improve-bar-fill" style="width:${d.val}%;background:var(--red)"></div></div></div>`).join('')}</div>`;
-    if(goods.length) iHtml+=`<div class="improve-card"><div class="improve-label good">⬆ Strengths</div>${goods.map(d=>`<div class="improve-bar-row"><div class="improve-bar-top"><span>${d.name}</span><span>${d.val}/100</span></div><div class="improve-bar-bg"><div class="improve-bar-fill" style="width:${d.val}%;background:var(--green)"></div></div></div>`).join('')}</div>`;
-    document.getElementById('improveGrid').innerHTML=iHtml;
+  }catch(err){
+    document.getElementById('r-overall-q').textContent='"Report generation encountered an issue. Please check your API quota."';
+  }
 
-    document.getElementById('rOverall').textContent=rep.overall;
-    document.getElementById('rTech').textContent=rep.tech;
-    document.getElementById('rHR').textContent=rep.hr;
-    document.getElementById('rFace').textContent=rep.face;
-    document.getElementById('rNext').textContent=rep.nextSteps;
+  // Charts
+  buildRadar(commAvg,relAvg,depthAvg,faceAvg,techAvg,hrAvg);
+  buildBar();
 
-    // Transcript
-    const ti=document.getElementById('transcriptItems');
-    ti.innerHTML='';
-    S.transcript.forEach((t,i)=>{
-      const d=document.createElement('div');d.className='tr-item';
-      d.innerHTML=`<div class="tr-q"><span>Q${t.qIdx+1} · ${t.round==='tech'?'Technical':'HR'}</span> ${t.q}</div><div class="tr-a">${t.a}</div><div><span class="tr-score ${cls(t.score)}">${t.score}/100 · ${t.feedback}</span></div>`;
-      ti.appendChild(d);
-    });
+  // Improvement areas
+  const dims=[{n:'Communication',v:commAvg},{n:'Relevance',v:relAvg},{n:'Depth',v:depthAvg},{n:'Body Language',v:faceAvg},{n:'Technical',v:techAvg},{n:'HR Round',v:hrAvg}];
+  const needs=dims.filter(d=>d.v>0&&d.v<65).sort((a,b)=>a.v-b.v);
+  const goods=dims.filter(d=>d.v>=65).sort((a,b)=>b.v-a.v);
+  let html='';
+  if(needs.length) html+=`<div class="bg-error-container/20 rounded-xl p-7 border border-error/15"><p class="text-xs font-bold uppercase tracking-widest text-error mb-4">⬇ Needs Improvement</p>${needs.map(d=>`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span class="text-on-surface-variant">${d.n}</span><span class="font-mono font-bold text-on-surface">${d.v}/100</span></div><div class="h-2 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${d.v}%;background:#ba1a1a"></div></div></div>`).join('')}</div>`;
+  if(goods.length) html+=`<div class="bg-secondary-container/40 rounded-xl p-7 border border-on-secondary-container/10"><p class="text-xs font-bold uppercase tracking-widest text-secondary mb-4">⬆ Strengths</p>${goods.map(d=>`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span class="text-on-surface-variant">${d.n}</span><span class="font-mono font-bold text-on-surface">${d.v}/100</span></div><div class="h-2 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${d.v}%;background:#536253"></div></div></div>`).join('')}</div>`;
+  document.getElementById('r-improve-grid').innerHTML=html;
 
-    // Proctor
-    const pi=document.getElementById('proctorItems');
-    pi.innerHTML=S.violations.length===0
-      ?'<div class="proctor-item clean">✓ No violations — clean session.</div>'
-      :S.violations.map(v=>`<div class="proctor-item">[${v.time}] ${v.reason}</div>`).join('');
+  // Transcript
+  const ti=document.getElementById('r-transcript-items');
+  ti.innerHTML='';
+  S.transcript.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10';
+    const scoreColor=t.score>=70?'text-secondary':t.score>=45?'text-primary':'text-error';
+    d.innerHTML=`
+      <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Q${t.qIdx+1} · ${t.round==='tech'?'Technical':'HR'}</p>
+      <p class="font-serif italic text-on-surface mb-2 text-sm">${t.q}</p>
+      <p class="text-on-surface-variant text-sm leading-relaxed mb-3">${t.a}</p>
+      <div class="flex items-center gap-3">
+        <span class="font-mono font-bold ${scoreColor}">${t.score}/100</span>
+        <span class="text-xs text-on-surface-variant">· ${t.feedback}</span>
+      </div>`;
+    ti.appendChild(d);
+  });
 
-    await sleep(400);
-    document.getElementById('iv').classList.remove('show');
-    document.getElementById('report').classList.add('show');
-    window.scrollTo({top:0,behavior:'smooth'});
+  // Proctor
+  const pi=document.getElementById('r-proctor-items');
+  pi.innerHTML=S.violations.length===0
+    ?'<p class="text-sm text-tertiary font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-base ms-fill" style="font-variation-settings:\'FILL\' 1,\'wght\' 400">verified</span>Clean session — no violations detected.</p>'
+    :S.violations.map(v=>`<p class="text-sm text-on-surface-variant font-mono py-2 border-b border-error/10">[${v.time}] ${v.reason}</p>`).join('');
 
-  }catch(err){alert('Report error: '+err.message);}
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function buildRadarChart(comm,rel,depth,face,tech,hr){
-  const ctx=document.getElementById('radarChart').getContext('2d');
-  new Chart(ctx,{type:'radar',data:{labels:['Communication','Relevance','Depth','Body Language','Technical','HR'],datasets:[{label:'Your Score',data:[comm,rel,depth,face||0,tech,hr||0],backgroundColor:'rgba(99,102,241,.15)',borderColor:'rgba(99,102,241,.8)',borderWidth:2,pointBackgroundColor:'#6366f1',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,ticks:{color:'#55556a',font:{size:9},stepSize:25},grid:{color:'#28282f'},pointLabels:{color:'#8888a0',font:{size:10}},angleLines:{color:'#28282f'}}},plugins:{legend:{display:false}}}});
+function buildRadar(comm,rel,depth,face,tech,hr){
+  const ctx=document.getElementById('r-radar').getContext('2d');
+  new Chart(ctx,{type:'radar',data:{
+    labels:['Communication','Relevance','Depth','Body Language','Technical','HR'],
+    datasets:[{label:'Score',data:[comm,rel,depth,face||0,tech,hr||0],
+      backgroundColor:'rgba(135,77,51,0.1)',borderColor:'rgba(135,77,51,0.7)',borderWidth:2,
+      pointBackgroundColor:'#874d33',pointRadius:3}]
+  },options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,
+    ticks:{color:'#85736d',font:{size:9},stepSize:25},
+    grid:{color:'#d8c2ba'},
+    pointLabels:{color:'#53443e',font:{size:10}},
+    angleLines:{color:'#d8c2ba'}}},
+  plugins:{legend:{display:false}}}});
 }
 
-function buildBarChart(){
-  const ctx=document.getElementById('barChart').getContext('2d');
-  const colors=S.allScores.map(s=>s>=70?'rgba(34,197,94,.8)':s>=45?'rgba(249,115,22,.8)':'rgba(239,68,68,.8)');
-  new Chart(ctx,{type:'bar',data:{labels:S.allLabels,datasets:[{label:'Score',data:S.allScores,backgroundColor:colors,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:100,ticks:{color:'#55556a',font:{size:9}},grid:{color:'#28282f'}},x:{ticks:{color:'#8888a0',font:{size:9}},grid:{display:false}}},plugins:{legend:{display:false}}}});
+function buildBar(){
+  const ctx=document.getElementById('r-bar').getContext('2d');
+  const colors=S.allScores.map(s=>s>=70?'rgba(83,98,83,0.8)':s>=45?'rgba(135,77,51,0.8)':'rgba(186,26,26,0.8)');
+  new Chart(ctx,{type:'bar',data:{labels:S.allLabels,datasets:[{data:S.allScores,backgroundColor:colors,borderRadius:6}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{beginAtZero:true,max:100,ticks:{color:'#85736d',font:{size:9}},grid:{color:'#f0ede8'}},
+            x:{ticks:{color:'#53443e',font:{size:9}},grid:{display:false}}},
+    plugins:{legend:{display:false}}}});
 }
 
 function downloadTranscript(){
-  let txt=`CAMPUSPREP — INTERVIEW TRANSCRIPT\n`;
-  txt+=`Candidate: ${S.name}\nRole: ${S.role}\nDate: ${new Date().toLocaleDateString('en-IN')}\n`;
-  txt+=`Difficulty: ${S.personality.toUpperCase()}\n\n`;
-  txt+='='.repeat(50)+'\n\n';
-  S.transcript.forEach((t,i)=>{
-    txt+=`Q${t.qIdx+1} [${t.round==='tech'?'TECHNICAL':'HR'}]\n`;
-    txt+=`Question: ${t.q}\n`;
-    txt+=`Answer: ${t.a}\n`;
-    txt+=`Score: ${t.score}/100 — ${t.feedback}\n\n`;
+  let txt=`CAMPUSPREP — INTERVIEW TRANSCRIPT\nCandidate: ${S.name}\nRole: ${S.role}\nDate: ${new Date().toLocaleDateString('en-IN')}\nDifficulty: ${S.personality.toUpperCase()}\n\n${'='.repeat(50)}\n\n`;
+  S.transcript.forEach(t=>{
+    txt+=`Q${t.qIdx+1} [${t.round==='tech'?'TECHNICAL':'HR'}]\nQuestion: ${t.q}\nAnswer: ${t.a}\nScore: ${t.score}/100 — ${t.feedback}\n\n`;
   });
-  if(S.violations.length){
-    txt+='='.repeat(50)+'\nPROCTORING LOG\n';
-    S.violations.forEach(v=>txt+=`[${v.time}] ${v.reason}\n`);
-  }
-  const blob=new Blob([txt],{type:'text/plain'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`CampusPrep_${S.name.replace(/ /g,'_')}_Transcript.txt`;a.click();
+  if(S.violations.length){txt+=`${'='.repeat(50)}\nPROCTORING LOG\n`;S.violations.forEach(v=>txt+=`[${v.time}] ${v.reason}\n`);}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
+  a.download=`CampusPrep_${S.name.replace(/ /g,'_')}.txt`;a.click();
 }
 
 // ══ UI HELPERS ══
-function setQDisplay(lbl,txt){document.getElementById('qLbl2').textContent=lbl;document.getElementById('qTxt').textContent=txt;}
+function setQDisplay(lbl,txt){
+  document.getElementById('iv-q-lbl').textContent=lbl;
+  document.getElementById('iv-q-txt').textContent=txt;
+}
 
 function buildDots(round){
-  const c=document.getElementById('qdots');c.innerHTML='';
+  const c=document.getElementById('iv-qdots');c.innerHTML='';
   for(let i=0;i<S.qPer;i++){const d=document.createElement('div');d.className='qdot';d.id=`qd-${round}-${i}`;c.appendChild(d);}
 }
 
 function updateDots(round,idx){
-  // Mark previous as done, current as active, rest as pending
   for(let i=0;i<S.qPer;i++){
     const d=document.getElementById(`qd-${round}-${i}`);
     if(!d) continue;
-    d.className=i<idx?'qdot done':i===idx?'qdot active':'qdot';
+    d.className=`qdot${i<idx?' done':i===idx?' active':''}`;
   }
 }
 
-function enableInput(on){
-  document.getElementById('ansTA').disabled=!on;
-  document.getElementById('sendB').disabled=!on;
-  document.getElementById('micB').disabled=!on;
-  if(on&&S.inputMode==='text') document.getElementById('ansTA').focus();
+function buildProg(){
+  const list=document.getElementById('iv-prog-list');list.innerHTML='';
+  [{id:'tech',label:'Technical Round'},{id:'hr',label:'HR Round'}].forEach(r=>{
+    const isActive=r.id===S.round;
+    const isDone=r.id==='tech'&&S.scores.tech.length>0&&S.round==='hr';
+    const d=document.createElement('div');
+    d.className=`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${isActive?'font-semibold':'text-on-surface-variant'}`;
+    if(isActive) d.style.cssText='background:rgba(135,77,51,0.08);color:#874d33';
+    d.innerHTML=`<span class="material-symbols-outlined text-sm ${isDone?'ms-fill':''}" style="${isDone?'font-variation-settings:\'FILL\' 1,\'wght\' 400':''}">${isDone?'check_circle':isActive?'radio_button_checked':'radio_button_unchecked'}</span>${r.label}`;
+    list.appendChild(d);
+  });
 }
 
-function updateFacePills(faceEv){
-  const cls=v=>v>=70?'high':v>=45?'mid':'low';
-  [['e',faceEv.eyeContact],['c',faceEv.confidence],['x',faceEv.expression]].forEach(([k,v])=>{
+function enableInput(on){
+  document.getElementById('iv-ans-ta').disabled=!on;
+  document.getElementById('iv-send-btn').disabled=!on;
+  document.getElementById('iv-mic-btn').disabled=!on;
+  if(on&&S.inputMode==='text') document.getElementById('iv-ans-ta').focus();
+}
+
+function setIvStatus(s){
+  const labels={typing:'Typing...',listening:'Listening',thinking:'Evaluating...'};
+  document.getElementById('iv-status-txt').textContent=labels[s]||s;
+}
+
+function updateFacePills(f){
+  const cls=v=>v>=70?'#536253':v>=45?'#874d33':'#ba1a1a';
+  [['eye',f.eyeContact],['conf',f.confidence],['expr',f.expression]].forEach(([k,v])=>{
     document.getElementById(`fp-${k}-n`).textContent=v;
-    document.getElementById(`fp-${k}`).className=`fpill ${cls(v)}`;
+    document.getElementById(`fp-${k}-n`).style.color=cls(v);
   });
 }
 
@@ -1271,36 +1520,55 @@ function updateScores(){
   const all=[...S.scores.tech,...S.scores.hr];
   if(!all.length) return;
   const a=calcAvg(all);
-  const cls=a>=70?'high':a>=45?'mid':'low';
-  document.getElementById('scCirc').className=`sc-circ ${cls}`;
-  document.getElementById('scN').textContent=a;
-  [['comm',S.dims.comm],['rel',S.dims.rel],['depth',S.dims.depth],['face',S.dims.face]].forEach(([k,vals])=>{
+  const circ=document.getElementById('iv-sc-circ');
+  const nc=document.getElementById('iv-sc-n');
+  nc.textContent=a;
+  const color=a>=70?'#536253':a>=45?'#874d33':'#ba1a1a';
+  nc.style.color=color;
+  circ.style.borderColor=color;
+  circ.style.background=a>=70?'rgba(83,98,83,0.08)':a>=45?'rgba(135,77,51,0.08)':'rgba(186,26,26,0.08)';
+
+  [['comm',S.dims.comm,'iv-dv-comm','iv-df-comm'],
+   ['rel',S.dims.rel,'iv-dv-rel','iv-df-rel'],
+   ['depth',S.dims.depth,'iv-dv-depth','iv-df-depth'],
+   ['face',S.dims.face,'iv-dv-face','iv-df-face']].forEach(([k,vals,dvId,dfId])=>{
     if(!vals.length) return;
-    const v=calcAvg(vals);const c=v>=70?'high':v>=45?'mid':'low';
-    document.getElementById(`dv-${k}`).textContent=v;
-    const fill=document.getElementById(`df-${k}`);fill.style.width=`${v}%`;fill.className=`dim-fill ${c}`;
+    const v=calcAvg(vals);
+    document.getElementById(dvId).textContent=v;
+    const fill=document.getElementById(dfId);
+    fill.style.width=`${v}%`;
+    fill.style.background=v>=70?'#536253':v>=45?'#874d33':'#ba1a1a';
   });
 }
 
 function addFeedback(text,score){
-  const list=document.getElementById('fbItems');
-  if(list.children.length===1&&list.children[0].textContent.includes('Notes appear')) list.innerHTML='';
-  const d=document.createElement('div');d.className=`fb-item ${score>=70?'good':'bad'}`;d.textContent=text;
+  const list=document.getElementById('iv-fb-list');
+  if(list.children.length===1&&list.children[0].tagName==='P') list.innerHTML='';
+  const d=document.createElement('div');
+  const good=score>=70;
+  d.className=`text-xs px-3 py-2 rounded-lg border ${good?'bg-secondary-container/30 border-on-secondary-container/20 text-on-secondary-container':'bg-primary-fixed/30 border-primary/20 text-on-surface-variant'}`;
+  d.textContent=text;
   list.insertBefore(d,list.firstChild);
 }
 
 function startGlobalTimer(){
-  S.timerID=setInterval(()=>{
+  S.globalTimerID=setInterval(()=>{
     S.elapsed++;
     const m=String(Math.floor(S.elapsed/60)).padStart(2,'0');
     const s=String(S.elapsed%60).padStart(2,'0');
-    const el=document.getElementById('navTimer');el.textContent=`${m}:${s}`;
-    if(S.elapsed>1800) el.classList.add('warn');
+    const el=document.getElementById('iv-timer');
+    el.textContent=`${m}:${s}`;
+    if(S.elapsed>1800) el.style.color='#f97316';
   },1000);
 }
 
 function calcAvg(arr){return arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;}
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// Attach textarea keydown for send
+document.getElementById('iv-ans-ta').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAnswer();}
+});
 </script>
 </body>
 </html>
