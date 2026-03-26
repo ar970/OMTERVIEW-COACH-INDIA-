@@ -667,67 +667,111 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background-color:#fcf9f4; col
         </div>
       </div>
 
-      <!-- Score cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
-          <span class="font-serif text-5xl font-bold text-primary block mb-1" id="r-sc-overall">—</span>
-          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Overall</span>
+      <!-- Score cards with meaning -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-surface-container-lowest rounded-xl p-5 text-center border border-outline-variant/10 shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1 rounded-t-xl" id="r-bar-overall" style="background:#d8c2ba"></div>
+          <span class="font-serif text-5xl font-bold block mb-1" id="r-sc-overall" style="color:#874d33">—</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant block">Overall</span>
+          <span class="text-[10px] text-on-surface-variant mt-1 block" id="r-lbl-overall">Computing...</span>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+        <div class="bg-surface-container-lowest rounded-xl p-5 text-center border border-outline-variant/10 shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1 rounded-t-xl" id="r-bar-tech" style="background:#d8c2ba"></div>
           <span class="font-serif text-5xl font-bold text-on-surface block mb-1" id="r-sc-tech">—</span>
-          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Technical</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant block">Technical</span>
+          <span class="text-[10px] text-on-surface-variant mt-1 block" id="r-lbl-tech">—</span>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+        <div class="bg-surface-container-lowest rounded-xl p-5 text-center border border-outline-variant/10 shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1 rounded-t-xl" id="r-bar-hr" style="background:#d8c2ba"></div>
           <span class="font-serif text-5xl font-bold text-on-surface block mb-1" id="r-sc-hr">—</span>
-          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">HR Round</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant block">HR Round</span>
+          <span class="text-[10px] text-on-surface-variant mt-1 block" id="r-lbl-hr">—</span>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10 shadow-sm">
+        <div class="bg-surface-container-lowest rounded-xl p-5 text-center border border-outline-variant/10 shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1 rounded-t-xl" id="r-bar-face" style="background:#d8c2ba"></div>
           <span class="font-serif text-5xl font-bold text-on-surface block mb-1" id="r-sc-face">—</span>
-          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Face Score</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant block">Face Score</span>
+          <span class="text-[10px] text-on-surface-variant mt-1 block" id="r-lbl-face">Camera required</span>
         </div>
       </div>
 
+      <!-- What the scores mean -->
+      <div class="bg-surface-container-low rounded-xl p-5 mb-8 border border-outline-variant/10 flex flex-wrap gap-6 text-xs text-on-surface-variant">
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block" style="background:#536253"></span><strong>70–100</strong> Strong · Ready for real interviews</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block" style="background:#874d33"></span><strong>45–69</strong> Developing · Needs practice in this area</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block" style="background:#ba1a1a"></span><strong>0–44</strong> Needs Work · Focus here before the real drive</span>
+      </div>
+
       <!-- Charts -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10" id="r-charts">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8" id="r-charts">
         <div class="bg-surface-container-lowest rounded-xl p-7 border border-outline-variant/10 shadow-sm">
-          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-5">Performance Radar</p>
+          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Skills Radar</p>
+          <p class="text-[11px] text-on-surface-variant mb-4">The closer to the outer edge, the stronger the skill</p>
           <div class="h-56 relative"><canvas id="r-radar"></canvas></div>
         </div>
         <div class="bg-surface-container-lowest rounded-xl p-7 border border-outline-variant/10 shadow-sm">
-          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-5">Score by Question</p>
+          <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Score per Question</p>
+          <p class="text-[11px] text-on-surface-variant mb-4">Green=strong, Orange=developing, Red=needs work</p>
           <div class="h-56 relative"><canvas id="r-bar"></canvas></div>
         </div>
       </div>
 
-      <!-- Improvement areas -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10" id="r-improve-grid"></div>
+      <!-- Improvement areas — clear and actionable -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8" id="r-improve-grid"></div>
 
-      <!-- Textual sections -->
-      <div class="space-y-5 mb-10">
+      <!-- Detailed feedback sections -->
+      <div class="space-y-5 mb-8">
         <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
-          <span class="text-primary italic font-serif text-lg block mb-3">Technical Round Feedback</span>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm">💻</div>
+            <span class="font-serif text-lg text-on-surface">Technical Round — What happened</span>
+          </div>
           <p class="text-on-surface-variant leading-relaxed" id="r-tech-txt">—</p>
         </div>
         <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
-          <span class="text-primary italic font-serif text-lg block mb-3">HR Round Feedback</span>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-sm">🤝</div>
+            <span class="font-serif text-lg text-on-surface">HR Round — What happened</span>
+          </div>
           <p class="text-on-surface-variant leading-relaxed" id="r-hr-txt">—</p>
         </div>
         <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
-          <span class="text-primary italic font-serif text-lg block mb-3">Face & Body Language</span>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-tertiary/10 flex items-center justify-center text-sm">📷</div>
+            <span class="font-serif text-lg text-on-surface">Face & Body Language</span>
+          </div>
           <p class="text-on-surface-variant leading-relaxed" id="r-face-txt">—</p>
         </div>
       </div>
 
-      <!-- Next steps -->
-      <div class="bg-white rounded-xl overflow-hidden flex flex-col md:flex-row mb-10 border border-outline-variant/10 shadow-sm">
-        <div class="md:w-1/4 bg-primary/10 flex items-center justify-center p-8">
-          <span class="text-6xl">🎯</span>
-        </div>
-        <div class="flex-1 p-8">
-          <h3 class="font-serif text-2xl mb-5">Before Your Real Interview</h3>
-          <p class="text-on-surface-variant leading-relaxed" id="r-next-txt">—</p>
+      <!-- Next steps — made very specific and visual -->
+      <div class="bg-gradient-to-br from-primary to-primary-container rounded-xl p-8 mb-8 text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-3 mb-5">
+            <span class="text-2xl">🎯</span>
+            <h3 class="font-serif text-2xl">Your Action Plan</h3>
+          </div>
+          <p class="text-white/70 text-sm mb-6">Do these 3 things before your next campus interview:</p>
+          <div class="space-y-4" id="r-next-steps-list">
+            <div class="flex gap-4 bg-white/10 rounded-xl p-4">
+              <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+              <p class="text-sm text-white/90 leading-relaxed" id="r-next-1">Loading...</p>
+            </div>
+            <div class="flex gap-4 bg-white/10 rounded-xl p-4">
+              <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+              <p class="text-sm text-white/90 leading-relaxed" id="r-next-2">Loading...</p>
+            </div>
+            <div class="flex gap-4 bg-white/10 rounded-xl p-4">
+              <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+              <p class="text-sm text-white/90 leading-relaxed" id="r-next-3">Loading...</p>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- Hidden field for old compat -->
+      <div id="r-next-txt" style="display:none"></div>
 
       <!-- Transcript -->
       <div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm mb-8" id="r-transcript">
@@ -983,10 +1027,19 @@ function handleViol(reason){
 
 // ══ Q TIMER ══
 function startQTimer(){
-  stopQTimer();S.qElapsed=0;updateTimerUI();
+  stopQTimer();
+  S.qElapsed=0;
+  // Reset ring to full immediately
+  const ring=document.getElementById('iv-timer-ring');
+  if(ring){ ring.style.strokeDashoffset='0'; ring.style.stroke='#874d33'; }
+  const el=document.getElementById('iv-q-timer');
+  if(el){ el.textContent='3:00'; el.style.color='#1c1c19'; }
+  
   S.qTimerID=setInterval(()=>{
-    S.qElapsed++;updateTimerUI();
-    if(S.qElapsed>=S.qLimit){stopQTimer();autoSubmit();}
+    if(S.busy) return; // don't count while evaluating
+    S.qElapsed++;
+    updateTimerUI();
+    if(S.qElapsed>=S.qLimit){ stopQTimer(); autoSubmit(); }
   },1000);
 }
 
@@ -996,11 +1049,15 @@ function updateTimerUI(){
   const rem=S.qLimit-S.qElapsed;
   const m=Math.floor(rem/60),s=rem%60;
   const el=document.getElementById('iv-q-timer');
+  if(!el) return;
   el.textContent=`${m}:${String(s).padStart(2,'0')}`;
   el.style.color=rem<=30?'#ba1a1a':rem<=60?'#f97316':'#1c1c19';
   const ring=document.getElementById('iv-timer-ring');
+  if(!ring) return;
   const circ=138.2;
-  ring.style.strokeDashoffset=(S.qElapsed/S.qLimit)*circ;
+  // strokeDashoffset=0 means full ring (3:00), circ means empty (0:00)
+  const fraction=rem/S.qLimit; // goes from 1 (full) to 0 (empty)
+  ring.style.strokeDashoffset=circ*(1-fraction);
   ring.style.stroke=rem<=30?'#ba1a1a':rem<=60?'#f97316':'#874d33';
 }
 
@@ -1329,8 +1386,40 @@ function goHR(btn){
 }
 
 async function skipToReport(){
-  if(!confirm('End interview early and generate report?')) return;
-  clearInterval(S.globalTimerID);stopQTimer();stopRec();enableInput(false);window.speechSynthesis.cancel();
+  // confirm() is blocked in fullscreen — use our own modal
+  showEndModal();
+}
+
+function showEndModal(){
+  // Remove any existing modal
+  const existing=document.getElementById('end-modal');
+  if(existing) existing.remove();
+  
+  const modal=document.createElement('div');
+  modal.id='end-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(28,28,25,0.6);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:#fcf9f4;border-radius:1.5rem;padding:2.5rem;max-width:380px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.2);text-align:center">
+      <div style="font-size:2.5rem;margin-bottom:1rem">⏹️</div>
+      <p style="font-family:'Newsreader',serif;font-size:1.5rem;font-weight:700;color:#1c1c19;margin-bottom:0.5rem">End Interview?</p>
+      <p style="font-size:0.875rem;color:#53443e;margin-bottom:1.5rem;line-height:1.6">Your answers so far will be used to generate your performance report. This cannot be undone.</p>
+      <div style="display:flex;gap:0.75rem">
+        <button onclick="document.getElementById('end-modal').remove()" style="flex:1;padding:0.875rem;border-radius:9999px;border:1.5px solid #d8c2ba;background:none;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;font-size:0.875rem;color:#53443e;cursor:pointer">Cancel</button>
+        <button onclick="confirmEndInterview()" style="flex:1;padding:0.875rem;border-radius:9999px;border:none;background:linear-gradient(135deg,#874d33,#a46549);color:white;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.875rem;cursor:pointer">End & Get Report</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmEndInterview(){
+  const modal=document.getElementById('end-modal');
+  if(modal) modal.remove();
+  clearInterval(S.globalTimerID);
+  stopQTimer();
+  stopRec();
+  enableInput(false);
+  window.speechSynthesis.cancel();
+  S.generateReportCalled=true;
   await generateReport();
 }
 
@@ -1351,13 +1440,50 @@ async function generateReport(){
 
   show('s-report');
 
+  // Score label helper
+  const scoreLbl=(v)=>v>=70?'Strong ✓':v>=45?'Developing':'Needs Work';
+  const scoreColor=(v)=>v>=70?'#536253':v>=45?'#874d33':'#ba1a1a';
+  const barColor=(v)=>v>=70?'#536253':v>=45?'#f59e0b':'#ba1a1a';
+
   // Fill basics
   document.getElementById('r-name-title').textContent=`${S.name}'s Interview`;
   document.getElementById('r-role-sub').textContent=`${S.role} · ${S.personality.charAt(0).toUpperCase()+S.personality.slice(1)} Difficulty`;
-  document.getElementById('r-sc-overall').textContent=overall||'—';
-  document.getElementById('r-sc-tech').textContent=techAvg||'—';
-  document.getElementById('r-sc-hr').textContent=hrAvg||'—';
-  document.getElementById('r-sc-face').textContent=faceAvg||'—';
+
+  // Overall score
+  const overallEl=document.getElementById('r-sc-overall');
+  overallEl.textContent=overall||'—';
+  overallEl.style.color=scoreColor(overall);
+  const overallBar=document.getElementById('r-bar-overall');
+  if(overallBar) overallBar.style.background=barColor(overall);
+  const overallLbl=document.getElementById('r-lbl-overall');
+  if(overallLbl) overallLbl.textContent=overall?scoreLbl(overall):'—';
+
+  // Tech score
+  const techEl=document.getElementById('r-sc-tech');
+  techEl.textContent=techAvg||'—';
+  techEl.style.color=scoreColor(techAvg);
+  const techBar=document.getElementById('r-bar-tech');
+  if(techBar) techBar.style.background=barColor(techAvg);
+  const techLbl=document.getElementById('r-lbl-tech');
+  if(techLbl) techLbl.textContent=techAvg?scoreLbl(techAvg):'—';
+
+  // HR score
+  const hrEl=document.getElementById('r-sc-hr');
+  hrEl.textContent=hrAvg||'—';
+  hrEl.style.color=scoreColor(hrAvg);
+  const hrBar=document.getElementById('r-bar-hr');
+  if(hrBar) hrBar.style.background=barColor(hrAvg);
+  const hrLbl=document.getElementById('r-lbl-hr');
+  if(hrLbl) hrLbl.textContent=hrAvg?scoreLbl(hrAvg):'Incomplete';
+
+  // Face score
+  const faceEl=document.getElementById('r-sc-face');
+  faceEl.textContent=faceAvg||'—';
+  faceEl.style.color=faceAvg?scoreColor(faceAvg):'#85736d';
+  const faceBar=document.getElementById('r-bar-face');
+  if(faceBar) faceBar.style.background=faceAvg?barColor(faceAvg):'#d8c2ba';
+  const faceLbl=document.getElementById('r-lbl-face');
+  if(faceLbl) faceLbl.textContent=faceAvg?scoreLbl(faceAvg):'Camera not used';
 
   // Generate AI report
   try{
@@ -1366,24 +1492,32 @@ async function generateReport(){
 Technical: ${techAvg}/100 (${S.scores.tech.length} Qs). HR: ${hrAvg}/100 (${S.scores.hr.length} Qs). Face: ${faceAvg}/100. Overall: ${overall}/100.
 ${faceInfo}
 Return ONLY JSON:
-{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","overallQ":"<3-sentence editorial assessment as if writing a magazine review>","tech":"<2-3 sentences>","hr":"<2-3 sentences>","face":"<2 sentences>","nextSteps":"<3 actionable steps before real interview>"}`);
+{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","overallQ":"<3-sentence editorial assessment of the candidate>","tech":"<2-3 specific sentences about technical performance>","hr":"<2-3 specific sentences about HR performance>","face":"<2 sentences about body language and presence>","nextSteps":"<Step 1 specific action>\n<Step 2 specific action>\n<Step 3 specific action>"}`);
 
     document.getElementById('r-overall-q').textContent=`"${rep.overallQ}"`;
     document.getElementById('r-verdict-name').textContent=rep.verdict;
     document.getElementById('r-verdict-label').textContent=rep.verdict;
 
     const vd={
-      'Strong Hire':{desc:'Outstanding performance. Very likely to receive an offer.',bg:'bg-secondary-container',color:'text-on-secondary-container'},
-      'Hire':{desc:'Solid candidate. Competitive for this role.',bg:'bg-secondary-container',color:'text-on-secondary-container'},
-      'Borderline':{desc:'Mixed performance. A few improvements could change the outcome.',bg:'bg-primary-fixed',color:'text-primary'},
-      'Not Ready':{desc:'Needs more preparation before the real thing.',bg:'bg-error-container',color:'text-error'}
-    }[rep.verdict]||{desc:'',bg:'bg-secondary-container',color:'text-on-secondary-container'};
+      'Strong Hire':{desc:'Outstanding performance. You are very likely to receive an offer. Focus on maintaining this standard.',emoji:'🎉'},
+      'Hire':{desc:'Solid candidate. You are competitive for this role. A few more practice rounds will help you stand out.',emoji:'✅'},
+      'Borderline':{desc:'Mixed performance. You have potential but need focused improvement in specific areas below.',emoji:'⚠️'},
+      'Not Ready':{desc:'Needs more preparation. Study your weak areas in the Action Plan below and practice daily before your campus drive.',emoji:'📚'}
+    }[rep.verdict]||{desc:'',emoji:'📋'};
 
     document.getElementById('r-verdict-desc').textContent=vd.desc;
     document.getElementById('r-tech-txt').textContent=rep.tech;
     document.getElementById('r-hr-txt').textContent=rep.hr;
     document.getElementById('r-face-txt').textContent=rep.face;
-    document.getElementById('r-next-txt').textContent=rep.nextSteps;
+
+    // Populate numbered action steps
+    const steps=rep.nextSteps.split(/\n|;|\d+\./).map(s=>s.trim()).filter(s=>s.length>10);
+    const s1=document.getElementById('r-next-1');
+    const s2=document.getElementById('r-next-2');
+    const s3=document.getElementById('r-next-3');
+    if(s1) s1.textContent=steps[0]||rep.nextSteps;
+    if(s2) s2.textContent=steps[1]||'Practice answering out loud every day, even for 10 minutes.';
+    if(s3) s3.textContent=steps[2]||'Record yourself answering questions and watch it back to fix delivery issues.';
 
   }catch(err){
     document.getElementById('r-overall-q').textContent='"Report generation encountered an issue. Please check your API quota."';
@@ -1397,9 +1531,58 @@ Return ONLY JSON:
   const dims=[{n:'Communication',v:commAvg},{n:'Relevance',v:relAvg},{n:'Depth',v:depthAvg},{n:'Body Language',v:faceAvg},{n:'Technical',v:techAvg},{n:'HR Round',v:hrAvg}];
   const needs=dims.filter(d=>d.v>0&&d.v<65).sort((a,b)=>a.v-b.v);
   const goods=dims.filter(d=>d.v>=65).sort((a,b)=>b.v-a.v);
+  const dimTips={
+    'Communication':'Work on clear, structured answers. Use STAR format: Situation, Task, Action, Result.',
+    'Relevance':'Always tie your answer directly back to the question. Avoid going off-topic.',
+    'Depth':'Give specific examples with numbers and outcomes. "I improved X by Y%" is stronger than "I improved X".',
+    'Body Language':'Maintain eye contact with the camera. Sit upright, speak confidently, avoid looking away.',
+    'Technical':'Revise core concepts for this role. Practice explaining your resume projects clearly.',
+    'HR Round':'Prepare your "Tell me about yourself" story. Research common HR questions and practice out loud.'
+  };
+
   let html='';
-  if(needs.length) html+=`<div class="bg-error-container/20 rounded-xl p-7 border border-error/15"><p class="text-xs font-bold uppercase tracking-widest text-error mb-4">⬇ Needs Improvement</p>${needs.map(d=>`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span class="text-on-surface-variant">${d.n}</span><span class="font-mono font-bold text-on-surface">${d.v}/100</span></div><div class="h-2 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${d.v}%;background:#ba1a1a"></div></div></div>`).join('')}</div>`;
-  if(goods.length) html+=`<div class="bg-secondary-container/40 rounded-xl p-7 border border-on-secondary-container/10"><p class="text-xs font-bold uppercase tracking-widest text-secondary mb-4">⬆ Strengths</p>${goods.map(d=>`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span class="text-on-surface-variant">${d.n}</span><span class="font-mono font-bold text-on-surface">${d.v}/100</span></div><div class="h-2 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${d.v}%;background:#536253"></div></div></div>`).join('')}</div>`;
+  if(needs.length){
+    html+=`<div class="bg-surface-container-lowest rounded-xl p-7 border-l-4 border-error shadow-sm">
+      <p class="text-xs font-bold uppercase tracking-widest text-error mb-5 flex items-center gap-2"><span>⬇</span> Focus Areas — Practice These</p>
+      <div class="space-y-5">
+        ${needs.map(d=>`
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-sm font-semibold text-on-surface">${d.n}</span>
+            <span class="font-mono text-sm font-bold" style="color:#ba1a1a">${d.v}/100</span>
+          </div>
+          <div class="h-2 bg-surface-container-high rounded-full overflow-hidden mb-2">
+            <div class="h-full rounded-full" style="width:${d.v}%;background:#ba1a1a"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant leading-relaxed">${dimTips[d.n]||'Dedicate focused practice time to this area.'}</p>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if(goods.length){
+    html+=`<div class="bg-surface-container-lowest rounded-xl p-7 border-l-4 border-secondary shadow-sm">
+      <p class="text-xs font-bold uppercase tracking-widest text-secondary mb-5 flex items-center gap-2"><span>⬆</span> Your Strengths — Keep It Up</p>
+      <div class="space-y-5">
+        ${goods.map(d=>`
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-sm font-semibold text-on-surface">${d.n}</span>
+            <span class="font-mono text-sm font-bold" style="color:#536253">${d.v}/100</span>
+          </div>
+          <div class="h-2 bg-surface-container-high rounded-full overflow-hidden mb-2">
+            <div class="h-full rounded-full" style="width:${d.v}%;background:#536253"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant leading-relaxed">This is a strength. Maintain it and use it confidently in your real interview.</p>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if(!needs.length && !goods.length){
+    html='<div class="col-span-2 text-center text-on-surface-variant py-8 text-sm">Complete at least one round to see improvement areas.</div>';
+  }
+
   document.getElementById('r-improve-grid').innerHTML=html;
 
   // Transcript
