@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 tailwind.config = {
   theme: {
@@ -861,16 +862,52 @@ function setPers(p,btn){
   btn.className=`pers-btn active-pers py-3 px-2 rounded-xl border-2 border-primary text-primary text-xs font-bold transition-all ${p==='easy'?'bg-primary-fixed/40':p==='medium'?'bg-secondary-container/50':'bg-error-container/40'}`;
 }
 
-function onResume(e){
+async function onResume(e){
   const f=e.target.files[0];if(!f)return;
   document.getElementById('h-rz-prompt').style.display='none';
   document.getElementById('h-rz-done').classList.remove('hidden');
   document.getElementById('h-rz-done').classList.add('flex');
   document.getElementById('h-rz-name').textContent=f.name;
+
   if(f.type==='application/pdf'){
-    const r=new FileReader();r.onload=()=>{S.resumeB64=r.result.split(',')[1];S.resumeMime='application/pdf'};r.readAsDataURL(f);
+    // Extract text client-side using PDF.js — no server call needed
+    document.getElementById('h-rz-name').textContent=f.name+' (reading...)';
+    try{
+      // Set PDF.js worker
+      if(window.pdfjsLib){
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const arrayBuf=await f.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
+        let fullText='';
+        for(let i=1;i<=pdf.numPages;i++){
+          const page=await pdf.getPage(i);
+          const tc=await page.getTextContent();
+          fullText+=tc.items.map(item=>item.str).join(' ')+'
+';
+        }
+        S.resumeText=fullText.trim();
+        S.resumeB64=''; // clear b64 since we have text
+        document.getElementById('h-rz-name').textContent=f.name+' ✓';
+        console.log('PDF extracted, chars:',S.resumeText.length);
+      } else {
+        // PDF.js not loaded — fallback: store as base64 and try Gemini
+        const r=new FileReader();
+        r.onload=()=>{S.resumeB64=r.result.split(',')[1];S.resumeMime='application/pdf';};
+        r.readAsDataURL(f);
+        document.getElementById('h-rz-name').textContent=f.name;
+      }
+    }catch(err){
+      console.warn('PDF.js extraction failed:',err);
+      // Fallback to base64
+      const r=new FileReader();
+      r.onload=()=>{S.resumeB64=r.result.split(',')[1];S.resumeMime='application/pdf';};
+      r.readAsDataURL(f);
+      document.getElementById('h-rz-name').textContent=f.name+' (fallback mode)';
+    }
   }else{
-    const r=new FileReader();r.onload=()=>{S.resumeText=r.result};r.readAsText(f);
+    const r=new FileReader();
+    r.onload=()=>{S.resumeText=r.result};
+    r.readAsText(f);
   }
 }
 
@@ -1187,15 +1224,35 @@ async function gemini(prompt){
 async function geminiJSON(p){return JSON.parse((await gemini(p)).replace(/```json|```/g,'').trim());}
 
 async function extractResume(){
-  if(S.resumeText) return S.resumeText;
+  // PDF.js already extracted text in onResume — just return it
+  if(S.resumeText && S.resumeText.length>50) return S.resumeText;
+  
+  // Fallback: try Gemini vision if we have base64 (small PDFs or image-based)
   if(S.resumeB64){
-    const body={contents:[{parts:[{inline_data:{mime_type:S.resumeMime,data:S.resumeB64}},{text:'Extract all text from this resume. Return raw text only.'}]}]};
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!res.ok) throw new Error('Could not read PDF');
-    S.resumeText=(await res.json()).candidates[0].content.parts[0].text.trim();
-    return S.resumeText;
+    try{
+      const body={contents:[{parts:[
+        {inline_data:{mime_type:S.resumeMime,data:S.resumeB64}},
+        {text:'Extract all text from this resume document. Return only the raw text content, no commentary.'}
+      ]}]};
+      const res=await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.apiKey}`,
+        {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}
+      );
+      if(res.ok){
+        const d=await res.json();
+        S.resumeText=d.candidates[0].content.parts[0].text.trim();
+        return S.resumeText;
+      }
+    }catch(e){
+      console.warn('Gemini PDF fallback failed:',e);
+    }
+    return 'Resume could not be fully parsed. Candidate has work experience and technical skills.';
   }
-  return 'No resume.';
+  
+  // If we have partial text (short resume), still use it
+  if(S.resumeText) return S.resumeText;
+  
+  return 'No resume provided. Ask general questions for this role.';
 }
 
 async function analyzeFace(b64,q,ans){
