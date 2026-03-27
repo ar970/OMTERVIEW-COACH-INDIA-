@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampusPrep — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..800;1,6..72,300..800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --cream:#fcf9f4; --cream-low:#f6f3ee; --cream-mid:#f0ede8;
+  --cream-high:#ebe8e3; --cream-highest:#e5e2dd; --white:#ffffff;
+  --primary:#874d33; --primary-light:#a46549; --primary-fixed:#ffdbcd;
+  --secondary:#536253; --secondary-container:#d3e4d1;
+  --tertiary:#166664;
+  --on-surface:#1c1c19; --on-surface-v:#53443e;
+  --outline:#85736d; --outline-v:#d8c2ba;
+  --error:#ba1a1a; --error-container:#ffdad6;
+  --green:#15803d; --orange:#c2410c;
+  --sidebar-w:240px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--cream-low);color:var(--on-surface);-webkit-font-smoothing:antialiased;}
+.serif{font-family:'Newsreader',serif;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.ms{font-family:'Material Symbols Outlined';font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;vertical-align:middle;}
+.ms-fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;}
+
+/* ── LOGIN ── */
+.login{position:fixed;inset:0;background:var(--cream);display:flex;align-items:center;justify-content:center;z-index:999;}
+.login-card{background:white;border-radius:1.5rem;padding:2.5rem;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(135,77,51,.1);}
+.login-logo{font-family:'Newsreader',serif;font-size:1.75rem;font-style:italic;color:#9a3412;margin-bottom:.25rem;}
+.login-sub{font-size:.8125rem;color:var(--on-surface-v);margin-bottom:1.5rem;}
+.login-input{width:100%;background:var(--cream-mid);border:1.5px solid var(--outline-v);border-radius:.75rem;padding:.75rem 1rem;font-size:.875rem;font-family:'JetBrains Mono',monospace;outline:none;margin-bottom:.875rem;transition:border-color .2s;}
+.login-input:focus{border-color:var(--primary);}
+.login-btn{width:100%;padding:.875rem;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:white;border:none;border-radius:.875rem;font-weight:700;font-size:.9375rem;cursor:pointer;transition:all .2s;}
+.login-btn:hover{transform:scale(.98);}
+.login-err{font-size:.8125rem;color:var(--error);margin-top:.5rem;display:none;}
+
+/* ── LAYOUT ── */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:var(--sidebar-w);background:white;border-right:1px solid rgba(216,194,186,.3);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;}
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;}
+
+/* Sidebar */
+.sb-logo{padding:1.5rem 1.25rem 1rem;border-bottom:1px solid rgba(216,194,186,.2);}
+.sb-logo-txt{font-family:'Newsreader',serif;font-size:1.25rem;font-style:italic;color:#9a3412;}
+.sb-logo-sub{font-size:.6875rem;color:var(--outline);text-transform:uppercase;letter-spacing:.08em;margin-top:.125rem;}
+.sb-nav{padding:.75rem .875rem;flex:1;}
+.sb-link{display:flex;align-items:center;gap:.625rem;padding:.625rem .875rem;border-radius:.75rem;font-size:.8125rem;font-weight:500;color:var(--on-surface-v);cursor:pointer;transition:all .15s;margin-bottom:.125rem;border:none;background:none;width:100%;text-align:left;}
+.sb-link:hover{background:var(--cream-low);color:var(--primary);}
+.sb-link.active{background:var(--primary-fixed);color:var(--primary);font-weight:700;}
+.sb-bottom{padding:1rem .875rem;border-top:1px solid rgba(216,194,186,.2);}
+.sb-refresh{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--on-surface-v);cursor:pointer;padding:.5rem .875rem;border-radius:.75rem;transition:all .15s;border:none;background:none;width:100%;}
+.sb-refresh:hover{background:var(--cream-low);color:var(--primary);}
+
+/* Top bar */
+.topbar{background:rgba(252,249,244,.9);backdrop-filter:blur(12px);border-bottom:1px solid rgba(216,194,186,.25);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;}
+.topbar-title{font-family:'Newsreader',serif;font-size:1.25rem;color:var(--on-surface);}
+.topbar-right{display:flex;align-items:center;gap:.75rem;}
+.export-btn{display:flex;align-items:center;gap:.375rem;background:var(--primary);color:white;border:none;border-radius:999px;padding:.4rem 1rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .15s;}
+.export-btn:hover{opacity:.88;}
+
+/* Content */
+.content{padding:2rem;}
+
+/* ── VIEWS ── */
+.view{display:none;}
+.view.active{display:block;}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+.stat-card{background:white;border-radius:1rem;padding:1.375rem;border:1px solid rgba(216,194,186,.2);box-shadow:0 4px 16px rgba(135,77,51,.04);}
+.stat-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--outline);margin-bottom:.375rem;}
+.stat-num{font-family:'Newsreader',serif;font-size:2.25rem;font-weight:700;line-height:1;color:var(--on-surface);margin-bottom:.25rem;}
+.stat-num.green{color:var(--green);}
+.stat-num.orange{color:var(--orange);}
+.stat-num.red{color:var(--error);}
+.stat-sub{font-size:.6875rem;color:var(--on-surface-v);}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;}
+@media(max-width:768px){.charts-row{grid-template-columns:1fr;}}
+.chart-card{background:white;border-radius:1rem;padding:1.5rem;border:1px solid rgba(216,194,186,.2);box-shadow:0 4px 16px rgba(135,77,51,.04);}
+.chart-ttl{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--outline);margin-bottom:.25rem;}
+.chart-sub{font-size:.6875rem;color:var(--on-surface-v);margin-bottom:1rem;}
+.chart-wrap{height:200px;position:relative;}
+
+/* Table */
+.table-card{background:white;border-radius:1rem;border:1px solid rgba(216,194,186,.2);box-shadow:0 4px 16px rgba(135,77,51,.04);overflow:hidden;}
+.table-head{padding:1.25rem 1.5rem;border-bottom:1px solid rgba(216,194,186,.2);display:flex;align-items:center;justify-content:space-between;}
+.table-title{font-size:.875rem;font-weight:700;color:var(--on-surface);}
+.search-input{background:var(--cream-low);border:1.5px solid var(--outline-v);border-radius:999px;padding:.375rem .875rem;font-size:.75rem;outline:none;width:200px;transition:border-color .2s;}
+.search-input:focus{border-color:var(--primary);}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--outline);padding:.875rem 1.25rem;text-align:left;border-bottom:1px solid rgba(216,194,186,.2);white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(216,194,186,.1);cursor:pointer;transition:background .15s;}
+tbody tr:hover{background:var(--cream-low);}
+tbody tr:last-child{border-bottom:none;}
+td{padding:.875rem 1.25rem;font-size:.8125rem;color:var(--on-surface-v);white-space:nowrap;}
+td.name{font-weight:700;color:var(--on-surface);}
+.verdict-badge{display:inline-flex;padding:.2rem .625rem;border-radius:999px;font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.v-sh{background:rgba(22,128,61,.1);color:var(--green);}
+.v-h{background:rgba(83,98,83,.1);color:var(--secondary);}
+.v-b{background:rgba(135,77,51,.1);color:var(--primary);}
+.v-nr{background:rgba(186,26,26,.1);color:var(--error);}
+.status-dot{width:.5rem;height:.5rem;border-radius:50%;display:inline-block;margin-right:.375rem;}
+.dot-done{background:var(--green);}
+.dot-prog{background:var(--orange);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── STUDENT DETAIL VIEW ── */
+.detail-back{display:flex;align-items:center;gap:.5rem;font-size:.8125rem;font-weight:600;color:var(--on-surface-v);cursor:pointer;margin-bottom:1.5rem;background:none;border:none;padding:0;transition:color .15s;}
+.detail-back:hover{color:var(--primary);}
+.detail-hero{background:white;border-radius:1rem;padding:2rem;border:1px solid rgba(216,194,186,.2);box-shadow:0 4px 16px rgba(135,77,51,.04);margin-bottom:1rem;}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem;margin-bottom:1rem;}
+@media(max-width:768px){.detail-grid{grid-template-columns:repeat(2,1fr);}}
+.d-score-card{background:var(--cream-low);border-radius:.875rem;padding:1.25rem;text-align:center;border:1px solid rgba(216,194,186,.15);}
+.d-score-n{font-family:'Newsreader',serif;font-size:2.5rem;font-weight:700;line-height:1;display:block;margin-bottom:.25rem;}
+.d-score-l{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--outline);}
+.d-score-s{font-size:.6875rem;font-weight:600;display:block;margin-top:.2rem;}
+.answer-item{background:white;border-radius:1rem;padding:1.375rem;margin-bottom:.875rem;border:1px solid rgba(216,194,186,.2);box-shadow:0 2px 8px rgba(135,77,51,.04);}
+.ans-q-lbl{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--outline);margin-bottom:.375rem;}
+.ans-q{font-family:'Newsreader',serif;font-style:italic;font-size:1rem;color:var(--on-surface);margin-bottom:.5rem;}
+.ans-a{font-size:.875rem;color:var(--on-surface-v);line-height:1.65;margin-bottom:.625rem;}
+.ans-meta{display:flex;align-items:center;gap:1rem;font-size:.75rem;}
+.ans-score{font-weight:700;font-family:'JetBrains Mono',monospace;}
+.ans-fb{color:var(--on-surface-v);font-style:italic;}
+.score-bar-wrap{height:4px;background:var(--cream-highest);border-radius:2px;overflow:hidden;margin-top:.5rem;}
+.score-bar{height:100%;border-radius:2px;transition:width .8s ease;}
+.dim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.875rem;margin-bottom:1rem;}
+.dim-card{background:white;border-radius:.875rem;padding:1.125rem;border:1px solid rgba(216,194,186,.2);text-align:center;}
+.dim-n{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;display:block;margin-bottom:.25rem;}
+.dim-l{font-size:.625rem;text-transform:uppercase;letter-spacing:.08em;color:var(--outline);}
+.viol-item{display:flex;align-items:center;gap:.875rem;padding:.625rem .875rem;background:rgba(186,26,26,.04);border-radius:.625rem;border-left:3px solid var(--error);margin-bottom:.5rem;}
+
+/* Empty state */
+.empty{text-align:center;padding:4rem 2rem;color:var(--on-surface-v);}
+.empty-icon{font-size:3rem;margin-bottom:1rem;}
+.loading{text-align:center;padding:3rem;color:var(--on-surface-v);font-size:.875rem;}
+.loading .spin{display:inline-block;animation:spin 1s linear infinite;}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* Action plan */
+.ap-card{background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:1rem;padding:1.5rem;color:white;margin-bottom:1rem;}
+.ap-step{display:flex;gap:.75rem;background:rgba(255,255,255,.12);border-radius:.75rem;padding:.875rem;margin-top:.75rem;}
+.ap-num{width:1.5rem;height:1.5rem;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:.6875rem;font-weight:700;flex-shrink:0;}
+.ap-txt{font-size:.8125rem;color:rgba(255,255,255,.9);line-height:1.55;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--outline-v);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="login-card">
+    <div class="login-logo">CampusPrep</div>
+    <div class="login-sub">Admin Dashboard · Enter your key to continue</div>
+    <input type="password" class="login-input" id="login-key" placeholder="Admin key..." onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Access Dashboard</button>
+    <div class="login-err" id="login-err">Incorrect admin key. Try again.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app" style="display:none">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-txt">CampusPrep</div>
+      <div class="sb-logo-sub">Admin Dashboard</div>
+    </div>
+    <div class="sb-nav">
+      <button class="sb-link active" onclick="showView('overview')" id="nav-overview">
+        <span class="ms">dashboard</span>Overview
+      </button>
+      <button class="sb-link" onclick="showView('students')" id="nav-students">
+        <span class="ms">group</span>All Students
+      </button>
+    </div>
+    <div class="sb-bottom">
+      <button class="sb-refresh" onclick="loadDashboard()">
+        <span class="ms">refresh</span>Refresh Data
+      </button>
+      <button class="sb-refresh" onclick="exportCSV()" style="color:var(--primary)">
+        <span class="ms">download</span>Export CSV
+      </button>
+      <button class="sb-refresh" onclick="doLogout()" style="margin-top:.5rem;color:var(--error)">
+        <span class="ms">logout</span>Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title serif" id="topbar-title">Overview</div>
+      <div class="topbar-right">
+        <span style="font-size:.75rem;color:var(--outline)" id="last-updated"></span>
+        <button class="export-btn" onclick="exportCSV()">
+          <span class="ms" style="font-size:.875rem">download</span>Export CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- OVERVIEW VIEW -->
+      <div class="view active" id="view-overview">
+        <div class="stats-row" id="stats-row">
+          <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-num" id="st-total">—</div><div class="stat-sub">interviews started</div></div>
+          <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-num green" id="st-done">—</div><div class="stat-sub">fully finished</div></div>
+          <div class="stat-card"><div class="stat-label">Avg Overall Score</div><div class="stat-num" id="st-avg">—</div><div class="stat-sub">/100</div></div>
+          <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-num orange" id="st-prog">—</div><div class="stat-sub">currently active</div></div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="chart-ttl">Verdict Breakdown</div>
+            <div class="chart-sub">How students performed overall</div>
+            <div class="chart-wrap"><canvas id="chart-verdict"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-ttl">Average Scores by Round</div>
+            <div class="chart-sub">Technical vs HR performance across all students</div>
+            <div class="chart-wrap"><canvas id="chart-rounds"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Recent sessions table -->
+        <div class="table-card">
+          <div class="table-head">
+            <div class="table-title">Recent Sessions</div>
+            <a style="font-size:.75rem;color:var(--primary);font-weight:600;cursor:pointer;text-decoration:none" onclick="showView('students')">View all →</a>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>Student</th><th>Role</th><th>Overall</th><th>Technical</th><th>HR</th><th>Verdict</th><th>Date</th><th></th>
+              </tr></thead>
+              <tbody id="recent-tbody">
+                <tr><td colspan="8" class="loading"><span class="spin">⟳</span> Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDENTS VIEW -->
+      <div class="view" id="view-students">
+        <div class="table-card">
+          <div class="table-head">
+            <div class="table-title">All Students (<span id="student-count">0</span>)</div>
+            <input type="text" class="search-input" placeholder="Search name, role..." oninput="filterStudents(this.value)">
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>Student</th><th>College</th><th>Role</th><th>Diff.</th><th>Overall</th><th>Tech</th><th>HR</th><th>Violations</th><th>Verdict</th><th>Status</th><th>Date</th><th></th>
+              </tr></thead>
+              <tbody id="students-tbody">
+                <tr><td colspan="12" class="loading"><span class="spin">⟳</span> Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDENT DETAIL VIEW -->
+      <div class="view" id="view-detail">
+        <button class="detail-back" onclick="showView('students')">
+          <span class="ms">arrow_back</span>Back to All Students
+        </button>
+        <div id="detail-content">
+          <div class="loading"><span class="spin">⟳</span> Loading student data...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+// Change this to your deployed backend URL
+const API = 'https://your-backend.onrender.com';
+let ADMIN_KEY = '';
+let allSessions = [];
+let verdictChart = null;
+let roundsChart = null;
+
+// ── LOGIN ──
+function doLogin(){
+  const key = document.getElementById('login-key').value.trim();
+  if(!key){ document.getElementById('login-err').style.display='block'; return; }
+  ADMIN_KEY = key;
+  loadDashboard();
+}
+
+function doLogout(){
+  ADMIN_KEY = '';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login').style.display='flex';
+  document.getElementById('login-key').value='';
+}
+
+async function loadDashboard(){
+  try{
+    const res = await fetch(`${API}/api/admin/dashboard`, {
+      headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    if(res.status === 401){
+      document.getElementById('login-err').style.display='block';
+      return;
+    }
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+
+    // Hide login, show app
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.display='flex';
+
+    allSessions = data.sessions || [];
+    renderDashboard(data.stats, data.sessions);
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN');
+
+  }catch(err){
+    document.getElementById('login-err').textContent = 'Error: ' + err.message;
+    document.getElementById('login-err').style.display='block';
+  }
+}
+
+function renderDashboard(stats, sessions){
+  // Stats
+  document.getElementById('st-total').textContent = stats.total;
+  document.getElementById('st-done').textContent = stats.completed;
+  document.getElementById('st-avg').textContent = stats.avgScore || '—';
+  document.getElementById('st-prog').textContent = stats.inProgress;
+
+  // Verdict chart
+  const vb = stats.verdictBreakdown;
+  if(verdictChart) verdictChart.destroy();
+  verdictChart = new Chart(document.getElementById('chart-verdict').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Strong Hire','Hire','Borderline','Not Ready'],
+      datasets:[{data:[vb['Strong Hire'],vb['Hire'],vb['Borderline'],vb['Not Ready']],
+        backgroundColor:['rgba(22,128,61,.8)','rgba(83,98,83,.8)','rgba(135,77,51,.8)','rgba(186,26,26,.8)'],
+        borderWidth:0}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},color:'#53443e'}}}}
+  });
+
+  // Rounds chart
+  const completed = sessions.filter(s=>s.status==='completed');
+  if(roundsChart) roundsChart.destroy();
+  roundsChart = new Chart(document.getElementById('chart-rounds').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:['Technical','HR','Overall'],
+      datasets:[{
+        label:'Average Score',
+        data:[stats.avgTech||0, stats.avgHR||0, stats.avgScore||0],
+        backgroundColor:['rgba(135,77,51,.75)','rgba(83,98,83,.75)','rgba(22,102,100,.75)'],
+        borderRadius:6
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:100,ticks:{color:'#85736d',font:{size:9}},grid:{color:'#f0ede8'}},x:{ticks:{color:'#53443e',font:{size:10}},grid:{display:false}}},plugins:{legend:{display:false}}}
+  });
+
+  // Recent sessions (latest 10)
+  renderTable(document.getElementById('recent-tbody'), sessions.slice(0,10), true);
+
+  // All students table
+  document.getElementById('student-count').textContent = sessions.length;
+  renderTable(document.getElementById('students-tbody'), sessions, false);
+}
+
+function renderTable(tbody, sessions, compact){
+  if(!sessions.length){
+    tbody.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:3rem;color:var(--outline);font-size:.875rem">No sessions yet. Students will appear here once they start interviews.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = sessions.map(s => {
+    const vCls = s.verdict==='Strong Hire'?'v-sh':s.verdict==='Hire'?'v-h':s.verdict==='Borderline'?'v-b':'v-nr';
+    const date = s.completed_at||s.started_at ? new Date(s.completed_at||s.started_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+    const statusDot = s.status==='completed' ? '<span class="status-dot dot-done"></span>Done' : '<span class="status-dot dot-prog"></span>Active';
+    if(compact){
+      return `<tr onclick="openStudent('${s.id}')">
+        <td class="name">${s.student_name}</td>
+        <td>${s.role.substring(0,30)}${s.role.length>30?'…':''}</td>
+        <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor(s.overall_score)}">${s.overall_score||'—'}</span></td>
+        <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor(s.tech_score)}">${s.tech_score||'—'}</span></td>
+        <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor(s.hr_score)}">${s.hr_score||'—'}</span></td>
+        <td>${s.verdict?`<span class="verdict-badge ${vCls}">${s.verdict}</span>`:'—'}</td>
+        <td>${date}</td>
+        <td><span style="font-size:.75rem;color:var(--primary);font-weight:600">View →</span></td>
+      </tr>`;
+    }
+    return `<tr onclick="openStudent('${s.id}')">
+      <td class="name">${s.student_name}</td>
+      <td>${s.college||'—'}</td>
+      <td>${s.role.substring(0,25)}${s.role.length>25?'…':''}</td>
+      <td style="text-transform:capitalize">${s.difficulty||'—'}</td>
+      <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor(s.overall_score)}">${s.overall_score||'—'}</span></td>
+      <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor(s.tech_score)}">${s.tech_score||'—'}</span></td>
+      <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor(s.hr_score)}">${s.hr_score||'—'}</span></td>
+      <td style="color:${(s.violations||0)>0?'var(--error)':'var(--on-surface-v)'}">${s.violations||0}</td>
+      <td>${s.verdict?`<span class="verdict-badge ${vCls}">${s.verdict}</span>`:'—'}</td>
+      <td style="font-size:.75rem;color:var(--on-surface-v)">${statusDot}</td>
+      <td>${date}</td>
+      <td><span style="font-size:.75rem;color:var(--primary);font-weight:600">View →</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterStudents(q){
+  const filtered = q.trim()
+    ? allSessions.filter(s =>
+        s.student_name.toLowerCase().includes(q.toLowerCase()) ||
+        s.role.toLowerCase().includes(q.toLowerCase()) ||
+        (s.college||'').toLowerCase().includes(q.toLowerCase())
+      )
+    : allSessions;
+  document.getElementById('student-count').textContent = filtered.length;
+  renderTable(document.getElementById('students-tbody'), filtered, false);
+}
+
+// ── STUDENT DETAIL ──
+async function openStudent(sessionId){
+  showView('detail');
+  document.getElementById('detail-content').innerHTML = '<div class="loading"><span class="spin">⟳</span> Loading student data...</div>';
+
+  try{
+    const res = await fetch(`${API}/api/admin/student/${sessionId}`, {
+      headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    renderStudentDetail(data.session, data.answers, data.violations);
+  }catch(err){
+    document.getElementById('detail-content').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><p>${err.message}</p></div>`;
+  }
+}
+
+function renderStudentDetail(s, answers, violations){
+  const techAnswers = answers.filter(a=>a.round==='tech');
+  const hrAnswers = answers.filter(a=>a.round==='hr');
+  const vCls = s.verdict==='Strong Hire'?'v-sh':s.verdict==='Hire'?'v-h':s.verdict==='Borderline'?'v-b':'v-nr';
+  const dur = s.total_duration_secs ? `${Math.floor(s.total_duration_secs/60)}m ${s.total_duration_secs%60}s` : '—';
+  const date = s.completed_at ? new Date(s.completed_at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) : 'In progress';
+
+  document.getElementById('detail-content').innerHTML = `
+    <!-- Header -->
+    <div class="detail-hero" style="margin-bottom:1rem">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <div>
+          <p style="font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--outline);margin-bottom:.375rem">
+            ${s.difficulty?.toUpperCase()||'EASY'} · ${date}
+          </p>
+          <h1 class="serif" style="font-size:2.25rem;line-height:1.1;margin-bottom:.25rem">${s.student_name}</h1>
+          <p style="font-size:.9375rem;color:var(--on-surface-v)">${s.role} ${s.college?'· '+s.college:''}</p>
+        </div>
+        <div style="text-align:right">
+          ${s.verdict?`<span class="verdict-badge ${vCls}" style="font-size:.875rem;padding:.4rem 1rem">${s.verdict}</span>`:''}
+          <p style="font-size:.75rem;color:var(--on-surface-v);margin-top:.5rem">Duration: ${dur} · Violations: ${violations.length||0}</p>
+        </div>
+      </div>
+
+      <!-- Score cards -->
+      <div class="detail-grid" style="margin-top:1.5rem">
+        ${[['Overall',s.overall_score],['Technical',s.tech_score],['HR Round',s.hr_score],['Face Score',s.face_score]].map(([l,v])=>`
+          <div class="d-score-card">
+            <span class="d-score-n" style="color:${scoreColor(v)}">${v||'—'}</span>
+            <span class="d-score-l">${l}</span>
+            <span class="d-score-s" style="color:${scoreColor(v)}">${v?scoreLbl(v):'—'}</span>
+          </div>`).join('')}
+      </div>
+
+      <!-- Dim averages -->
+      <div class="dim-grid" style="margin-top:1rem">
+        ${[['Communication',s.comm_avg],['Relevance',s.relevance_avg],['Depth',s.depth_avg]].map(([l,v])=>`
+          <div class="dim-card">
+            <span class="dim-n" style="color:${scoreColor(v)}">${v||'—'}</span>
+            <span class="dim-l">${l}</span>
+          </div>`).join('')}
+      </div>
+
+      <!-- Report assessment -->
+      ${s.report_quote ? `<div style="background:var(--cream-low);border-radius:.875rem;padding:1.25rem;margin-top:1rem;border-left:4px solid var(--primary)">
+        <p class="serif" style="font-style:italic;color:var(--on-surface);line-height:1.65">"${s.report_quote}"</p>
+      </div>` : ''}
+    </div>
+
+    <!-- Action plan -->
+    ${s.action_step_1 ? `<div class="ap-card">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.25rem">
+        <span style="font-size:1.5rem">🎯</span>
+        <span class="serif" style="color:white;font-size:1.125rem">Recommended Action Plan</span>
+      </div>
+      ${[s.action_step_1,s.action_step_2,s.action_step_3].filter(Boolean).map((step,i)=>`
+        <div class="ap-step">
+          <div class="ap-num">${i+1}</div>
+          <div class="ap-txt">${step}</div>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <!-- Feedback -->
+    ${(s.report_tech||s.report_hr||s.report_face) ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem;margin-bottom:1rem">
+      ${s.report_tech?`<div style="background:white;border-radius:.875rem;padding:1.25rem;border:1px solid rgba(216,194,186,.2)">
+        <p style="font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--outline);margin-bottom:.5rem">💻 Technical Feedback</p>
+        <p style="font-size:.8125rem;color:var(--on-surface-v);line-height:1.65">${s.report_tech}</p>
+      </div>`:''}
+      ${s.report_hr?`<div style="background:white;border-radius:.875rem;padding:1.25rem;border:1px solid rgba(216,194,186,.2)">
+        <p style="font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--outline);margin-bottom:.5rem">🤝 HR Feedback</p>
+        <p style="font-size:.8125rem;color:var(--on-surface-v);line-height:1.65">${s.report_hr}</p>
+      </div>`:''}
+    </div>` : ''}
+
+    <!-- Technical answers -->
+    <div style="margin-bottom:1rem">
+      <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--on-surface-v);margin-bottom:.875rem">
+        Technical Round — ${techAnswers.length} answers
+      </p>
+      ${techAnswers.map(a=>renderAnswer(a)).join('')}
+    </div>
+
+    <!-- HR answers -->
+    <div style="margin-bottom:1rem">
+      <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--on-surface-v);margin-bottom:.875rem">
+        HR Round — ${hrAnswers.length} answers
+      </p>
+      ${hrAnswers.map(a=>renderAnswer(a)).join('')}
+    </div>
+
+    <!-- Violations -->
+    ${violations.length ? `<div style="background:white;border-radius:1rem;padding:1.375rem;border:1px solid rgba(216,194,186,.2);margin-bottom:1rem">
+      <p style="font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--error);margin-bottom:.875rem">🔒 Proctoring Violations (${violations.length})</p>
+      ${violations.map(v=>`<div class="viol-item">
+        <span class="ms" style="color:var(--error);font-size:1rem">warning</span>
+        <div>
+          <p style="font-size:.8125rem;font-weight:600;color:var(--on-surface)">${v.reason}</p>
+          <p style="font-size:.6875rem;font-family:'JetBrains Mono',monospace;color:var(--outline)">${new Date(v.occurred_at).toLocaleTimeString('en-IN')}</p>
+        </div>
+      </div>`).join('')}
+    </div>` : `<div style="background:rgba(22,102,100,.06);border:1px solid rgba(22,102,100,.2);border-radius:.875rem;padding:1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.625rem">
+      <span class="ms" style="color:var(--tertiary)">verified</span>
+      <p style="font-size:.875rem;font-weight:600;color:var(--tertiary)">Clean session — no proctoring violations.</p>
+    </div>`}
+  `;
+}
+
+function renderAnswer(a){
+  const c = scoreColor(a.score);
+  return `<div class="answer-item">
+    <div class="ans-q-lbl">Q${a.q_index+1} · ${a.round==='tech'?'Technical':'HR'}</div>
+    <div class="ans-q">${a.question}</div>
+    <div class="ans-a">${a.answer||'(No answer provided)'}</div>
+    <div class="score-bar-wrap"><div class="score-bar" style="width:${a.score||0}%;background:${c}"></div></div>
+    <div class="ans-meta" style="margin-top:.5rem">
+      <span class="ans-score" style="color:${c}">${a.score||0}/100</span>
+      <span class="ans-fb">${a.feedback||''}</span>
+    </div>
+  </div>`;
+}
+
+// ── Navigation ──
+function showView(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  const navEl = document.getElementById('nav-'+view);
+  if(navEl) navEl.classList.add('active');
+  const titles = {overview:'Overview',students:'All Students',detail:'Student Detail'};
+  document.getElementById('topbar-title').textContent = titles[view]||view;
+}
+
+// ── CSV Export ──
+async function exportCSV(){
+  try{
+    const res = await fetch(`${API}/api/admin/export`, {
+      headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'campusprep-results.csv'; a.click();
+  }catch(err){ alert('Export failed: '+err.message); }
+}
+
+// ── Helpers ──
+function scoreColor(v){ return !v?'var(--on-surface-v)':v>=70?'var(--green)':v>=45?'var(--orange)':'var(--error)'; }
+function scoreLbl(v){ return v>=70?'Strong ✓':v>=45?'Developing':'Needs Work'; }
+</script>
+</body>
+</html>
