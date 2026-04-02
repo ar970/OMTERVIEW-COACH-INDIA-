@@ -909,7 +909,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
 if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ══ BACKEND URL — change this to your Render URL after deploying ══
-const BACKEND = 'https://campus-prep-backend.onrender.com';
+const BACKEND = 'https://your-backend.onrender.com';
 let SESSION_ID = null; // set when interview starts
 
 // ══ STATE ══
@@ -936,10 +936,30 @@ const S={
 const TI={name:'Rahul Verma',role:'Sr. Engineer · 8 yrs',emoji:'👨‍💼'};
 const HI={name:'Sneha Kapoor',role:'HR Manager · Campus',emoji:'👩‍💼'};
 const PDESC={
-  easy:'Ask warm, beginner-friendly questions. Be encouraging and supportive.',
-  medium:'Ask moderately challenging, professional questions. Be neutral.',
-  hard:'Ask tough, probing questions. Be direct and skeptical. Always add a follow-up.'
+  easy:'Ask beginner-level questions. Scoring guide: 70+ = clear complete answer with some structure. 45-69 = partially answered, missing key points. Below 45 = vague, off-topic, or very short answer.',
+  medium:'Ask moderately challenging questions. Scoring guide: 70+ = specific answer with examples and structure. 45-69 = general answer, lacks depth or examples. Below 45 = incomplete, irrelevant, or just 1-2 sentences.',
+  hard:'Ask tough probing questions. Always follow up. Scoring guide: 70+ = detailed answer with specific examples, numbers, and strong structure. 45-69 = decent but lacks specifics. Below 45 = vague, generic, or clearly unprepared.'
 };
+
+// Scoring rules applied to every evaluation regardless of difficulty
+const SCORING_RULES = `
+STRICT SCORING RULES — follow these exactly:
+- Score 0-30: Answer is blank, "I don't know", off-topic, or just 1-2 generic sentences with no substance
+- Score 31-44: Answer attempts the question but is very vague, no examples, no structure
+- Score 45-59: Partial answer — addresses the question but misses key points or lacks depth
+- Score 60-69: Decent answer — on-topic but could be more specific or structured
+- Score 70-79: Good answer — clear, structured, addresses the question with some examples
+- Score 80-89: Strong answer — specific examples, good structure, demonstrates real knowledge
+- Score 90-100: Exceptional — very specific, numbers/outcomes mentioned, excellent articulation
+
+CRITICAL RULES:
+- Do NOT give scores above 60 just because the candidate tried hard
+- Do NOT give scores above 70 unless the answer has specific examples or technical details
+- A vague 3-sentence answer should score 30-45, NOT 65+
+- "I would do X and Y" with no specifics = maximum 45
+- If the answer does not directly answer the question = maximum 40
+- Short answers under 30 words = maximum 35
+- Be a real recruiter. Campus drives are competitive. Most candidates should score 40-65.`;
 const DIM_TIPS={
   'Communication':'Structure answers using STAR (Situation, Task, Action, Result). Practice speaking in clear, complete sentences.',
   'Relevance':'Always tie your answer directly to what was asked. Avoid going off-topic.',
@@ -1097,17 +1117,36 @@ async function startPreCam(){
 // ── Launch interview ──
 async function launchIV(){
   try{ await document.documentElement.requestFullscreen(); }catch(e){}
-  if(S.preStream) S.preStream.getTracks().forEach(t=>t.stop());
 
   showScreen('s3');
 
   if(S.camActive){
     try{
-      S.camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+      // REUSE the existing preview stream directly — don't stop and restart
+      // Stopping and restarting causes a race condition on some browsers
+      if(S.preStream && S.preStream.active){
+        S.camStream=S.preStream;
+        S.preStream=null; // prevent it being stopped elsewhere
+      } else {
+        // Preview stream already stopped — request fresh one
+        // Wait 500ms for camera hardware to fully release
+        await new Promise(r=>setTimeout(r,500));
+        S.camStream=await navigator.mediaDevices.getUserMedia({
+          video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
+          audio:false
+        });
+      }
       const vid=document.getElementById('iv-cvid');
-      vid.srcObject=S.camStream; vid.style.display='block';
+      vid.srcObject=S.camStream;
+      vid.style.display='block';
       document.getElementById('iv-cph').style.display='none';
-    }catch(e){ S.camActive=false; }
+      // Confirm camera is truly active by checking tracks
+      const tracks=S.camStream.getVideoTracks();
+      S.camActive=tracks.length>0 && tracks[0].readyState==='live';
+    }catch(e){
+      console.warn('Camera failed in launchIV:',e.message);
+      S.camActive=false;
+    }
   }
 
   // Create session in backend
@@ -1270,25 +1309,51 @@ function toggleMic(){
   startRec();
 }
 
+// Stores interim text ACROSS restarts so no words are lost
+let _pendingInterim = '';
+
 function startRec(){
   if(S.busy||S.terminated) return;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const r=new SR();
-  r.continuous=true; r.interimResults=true; r.lang='en-IN'; r.maxAlternatives=1;
-  r.going=true; r.shouldRestart=true;
+
+  // en-US gives Chrome's highest accuracy model
+  // en-IN sometimes falls back to a lower quality server
+  r.continuous=true;
+  r.interimResults=true;
+  r.lang='en-US';
+  r.maxAlternatives=3; // get top 3 alternatives, pick most confident
+  r.going=true;
+  r.shouldRestart=true;
   S.rec=r;
 
   const btn=document.getElementById('iv-micbtn');
   btn.classList.add('rec');
-  if(!S.voiceFinal) renderVbox('','Listening — speak now...');
+  if(!S.voiceFinal && !_pendingInterim) renderVbox('','Listening — speak now...');
 
   r.onresult=(e)=>{
     let interim='';
     for(let i=e.resultIndex;i<e.results.length;i++){
-      if(e.results[i].isFinal) S.voiceFinal+=e.results[i][0].transcript+' ';
-      else interim+=e.results[i][0].transcript;
+      const result=e.results[i];
+      if(result.isFinal){
+        // Pick highest confidence alternative
+        let bestText=result[0].transcript;
+        let bestConf=result[0].confidence||0;
+        for(let j=1;j<result.length;j++){
+          if((result[j].confidence||0)>bestConf){
+            bestConf=result[j].confidence;
+            bestText=result[j].transcript;
+          }
+        }
+        S.voiceFinal+=bestText+' ';
+        _pendingInterim=''; // clear pending since it became final
+      } else {
+        interim+=result[0].transcript;
+      }
     }
-    renderVbox(S.voiceFinal,interim);
+    // Save interim so if restart happens mid-word we show it
+    if(interim) _pendingInterim=interim;
+    renderVbox(S.voiceFinal, interim||_pendingInterim);
     if(S.voiceFinal.trim()){
       document.getElementById('iv-vsend').classList.add('show');
       document.getElementById('iv-vclear').classList.add('show');
@@ -1296,19 +1361,38 @@ function startRec(){
   };
 
   r.onerror=(e)=>{
-    r.going=false; btn.classList.remove('rec');
-    if((e.error==='no-speech'||e.error==='network')&&r.shouldRestart&&S.mode==='voice'&&!S.busy&&!S.terminated)
-      setTimeout(()=>startRec(),300);
-    else if(e.error!=='no-speech'&&e.error!=='network')
+    r.going=false;
+    if(e.error==='no-speech'||e.error==='network'||e.error==='audio-capture'){
+      // Restart immediately — don't remove rec class so user sees continuity
+      if(r.shouldRestart&&S.mode==='voice'&&!S.busy&&!S.terminated){
+        setTimeout(()=>startRec(),50); // near-instant restart
+      } else {
+        btn.classList.remove('rec');
+      }
+    } else if(e.error==='not-allowed'){
+      btn.classList.remove('rec');
+      renderVbox(S.voiceFinal,'Microphone blocked. Please allow mic access in browser settings.');
+    } else {
+      btn.classList.remove('rec');
       renderVbox(S.voiceFinal,'Error: '+e.error+'. Click mic to retry.');
+    }
   };
 
   r.onend=()=>{
-    r.going=false; btn.classList.remove('rec');
-    if(r.shouldRestart&&S.mode==='voice'&&!S.busy&&!S.terminated) setTimeout(()=>startRec(),200);
+    r.going=false;
+    if(r.shouldRestart&&S.mode==='voice'&&!S.busy&&!S.terminated){
+      // Immediate restart — any words spoken during gap will be caught
+      // by the next session's first interim result
+      startRec();
+    } else {
+      btn.classList.remove('rec');
+    }
   };
 
-  try{ r.start(); }catch(e){ btn.classList.remove('rec'); }
+  try{ r.start(); }catch(ex){
+    btn.classList.remove('rec');
+    console.warn('rec.start() failed:',ex.message);
+  }
 }
 
 function stopRec(){
@@ -1331,7 +1415,7 @@ function sendVoiceAnswer(){
 }
 
 function clearVoice(){
-  S.voiceFinal=''; renderVbox('','');
+  S.voiceFinal=''; _pendingInterim=''; renderVbox('','');
   document.getElementById('iv-vsend').classList.remove('show');
   document.getElementById('iv-vclear').classList.remove('show');
 }
@@ -1419,12 +1503,17 @@ async function processAnswer(ans){
 
   try{
     const[ev,faceEv]=await Promise.all([
-      callGeminiJSON(`Evaluate campus interview answer for "${S.role}". Difficulty: ${S.difficulty}. ${PDESC[S.difficulty]}
+      callGeminiJSON(`You are a strict campus recruiter evaluating a candidate for "${S.role}".
+${SCORING_RULES}
+
+Difficulty setting: ${S.difficulty}. ${PDESC[S.difficulty]}
 Round: ${S.round==='tech'?'Technical':'HR'}
 Question: ${q}
-Answer: ${ans}
-Be honest. Return ONLY valid JSON:
-{"score":<0-100>,"communication":<0-100>,"relevance":<0-100>,"depth":<0-100>,"feedback":"<1 honest direct sentence>","reaction":"<2-4 word natural reaction, e.g. Good point. or Interesting. or I see.>","followUp":"<if difficulty is hard or answer was vague write a short follow-up question, else empty string>"}`),
+Candidate Answer: ${ans}
+
+Apply the scoring rules strictly. Do not be modest or encouraging with scores.
+Return ONLY valid JSON:
+{"score":<0-100>,"communication":<0-100>,"relevance":<0-100>,"depth":<0-100>,"feedback":"<1 blunt honest sentence — what was wrong or right>","reaction":"<2-4 word natural interviewer reaction>","followUp":"<a probing follow-up question if answer was vague or incomplete, else empty string>"}`),
       analyzeFace(frame,q,ans)
     ]);
 
@@ -1619,8 +1708,19 @@ async function buildReport(){
   const techAvg=calcAvg(S.scores.tech)||0;
   const hrAvg=calcAvg(S.scores.hr)||0;
   const faceAvg=calcAvg(S.dims.face)||0;
-  const contentAvg=Math.round((techAvg+(hrAvg||techAvg))/(S.scores.hr.length?2:1));
-  const overall=faceAvg?Math.round(contentAvg*.7+faceAvg*.3):contentAvg;
+
+  // Weighted average: tech counts more for technical roles
+  // If both rounds done: tech=60%, hr=40%
+  // If only tech done: tech=100%
+  const contentAvg=S.scores.hr.length>0
+    ? Math.round(techAvg*0.6 + hrAvg*0.4)
+    : techAvg;
+
+  // PENALTY RULE: If you bomb technical (<40), overall can't be above 50
+  // Real campus drives: failing technical = rejection regardless of HR
+  let overall = faceAvg ? Math.round(contentAvg*0.8 + faceAvg*0.2) : contentAvg;
+  if(techAvg>0 && techAvg<40) overall=Math.min(overall, 49);
+  if(techAvg>0 && techAvg<25) overall=Math.min(overall, 35);
   const commAvg=calcAvg(S.dims.comm)||0;
   const relAvg=calcAvg(S.dims.rel)||0;
   const depthAvg=calcAvg(S.dims.depth)||0;
@@ -1660,10 +1760,25 @@ async function buildReport(){
   // AI report
   try{
     const fi=S.faceScores.length?`Face data: eye ${calcAvg(S.faceScores.map(f=>f.eyeContact))}, conf ${calcAvg(S.faceScores.map(f=>f.confidence))}. Notes: ${S.faceScores.map(f=>f.note).join('; ')}`:'No camera.';
-    const rep=await callGeminiJSON(`Campus interview for ${S.name} applying to ${S.role}. Difficulty: ${S.difficulty}.
-Technical: ${techAvg}/100 (${S.scores.tech.length} Qs). HR: ${hrAvg}/100 (${S.scores.hr.length} Qs). Face: ${faceAvg}/100. Overall: ${overall}/100.
+    const rep=await callGeminiJSON(`You are a senior campus recruiter writing a final assessment for ${S.name} who interviewed for ${S.role}.
+Difficulty: ${S.difficulty}.
+Technical round: ${techAvg}/100 (${S.scores.tech.length} questions answered)
+HR round: ${hrAvg}/100 (${S.scores.hr.length} questions answered)
+Face/presence: ${faceAvg}/100
+Overall score: ${overall}/100
 ${fi}
-Return ONLY JSON: {"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","quote":"<2 sentences editorial-style overall assessment>","tech":"<2 sentences technical feedback>","hr":"<2 sentences HR feedback>","face":"<1 sentence on presence/body language>","s1":"<specific action step 1>","s2":"<specific action step 2>","s3":"<specific action step 3>"}`);
+
+VERDICT RULES — apply strictly:
+- "Strong Hire": Overall 80+, Technical 75+, HR 70+. Exceptional across both rounds.
+- "Hire": Overall 65+, Technical 60+. Good performance, competitive for the role.
+- "Borderline": Overall 45-64, OR Technical below 50. Needs improvement in key areas.
+- "Not Ready": Overall below 45, OR Technical below 35. Not ready for this role yet.
+
+If technical score is below 40, verdict CANNOT be "Hire" or "Strong Hire" regardless of HR score.
+Be direct and honest in feedback. Do not soften the assessment.
+
+Return ONLY valid JSON:
+{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","quote":"<2 sentences honest assessment — name specific strengths AND weaknesses>","tech":"<2 sentences — be specific about what was weak or strong technically>","hr":"<2 sentences — be specific about communication and HR performance>","face":"<1 sentence on body language and confidence>","s1":"<most critical specific action step>","s2":"<second action step>","s3":"<third action step>"}`);
 
     document.getElementById('r-quote').textContent=`"${rep.quote}"`;
     document.getElementById('r-verdict-name').textContent=rep.verdict;
