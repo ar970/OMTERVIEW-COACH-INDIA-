@@ -1760,25 +1760,77 @@ async function buildReport(){
   // AI report
   try{
     const fi=S.faceScores.length?`Face data: eye ${calcAvg(S.faceScores.map(f=>f.eyeContact))}, conf ${calcAvg(S.faceScores.map(f=>f.confidence))}. Notes: ${S.faceScores.map(f=>f.note).join('; ')}`:'No camera.';
-    const rep=await callGeminiJSON(`You are a senior campus recruiter writing a final assessment for ${S.name} who interviewed for ${S.role}.
-Difficulty: ${S.difficulty}.
-Technical round: ${techAvg}/100 (${S.scores.tech.length} questions answered)
-HR round: ${hrAvg}/100 (${S.scores.hr.length} questions answered)
-Face/presence: ${faceAvg}/100
-Overall score: ${overall}/100
+
+    // Build a transcript summary of the WORST answers for targeted action plan
+    const worstAnswers=S.transcript
+      .filter(t=>t.score<60)
+      .sort((a,b)=>a.score-b.score)
+      .slice(0,3)
+      .map(t=>`Q: ${t.q}
+A: ${t.a.substring(0,200)}
+Score: ${t.score}/100 — ${t.fb}`)
+      .join('
+
+');
+
+    const bestAnswers=S.transcript
+      .filter(t=>t.score>=70)
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,2)
+      .map(t=>`Q: ${t.q}
+A: ${t.a.substring(0,150)}
+Score: ${t.score}/100`)
+      .join('
+
+');
+
+    // Resume snippet for context
+    const resumeSnippet=(S.resumeText||'').substring(0,800);
+
+    const rep=await callGeminiJSON(`You are a senior campus recruiter writing a final performance report.
+
+CANDIDATE: ${S.name}
+ROLE APPLIED: ${S.role}
+COLLEGE: ${S.college||'Not specified'}
+DIFFICULTY: ${S.difficulty}
+
+SCORES:
+- Technical: ${techAvg}/100 (${S.scores.tech.length} questions)
+- HR: ${hrAvg}/100 (${S.scores.hr.length} questions)
+- Communication: ${commAvg}/100
+- Relevance: ${relAvg}/100
+- Depth: ${depthAvg}/100
+- Face/Presence: ${faceAvg}/100
+- Overall: ${overall}/100
 ${fi}
 
-VERDICT RULES — apply strictly:
-- "Strong Hire": Overall 80+, Technical 75+, HR 70+. Exceptional across both rounds.
-- "Hire": Overall 65+, Technical 60+. Good performance, competitive for the role.
-- "Borderline": Overall 45-64, OR Technical below 50. Needs improvement in key areas.
-- "Not Ready": Overall below 45, OR Technical below 35. Not ready for this role yet.
+RESUME BACKGROUND (use this to tailor action plan to their actual field and skills):
+${resumeSnippet}
 
-If technical score is below 40, verdict CANNOT be "Hire" or "Strong Hire" regardless of HR score.
-Be direct and honest in feedback. Do not soften the assessment.
+WEAKEST ANSWERS (where they struggled most — use these to write specific action steps):
+${worstAnswers||'No weak answers recorded.'}
+
+STRONGEST ANSWERS (what they did well):
+${bestAnswers||'No strong answers recorded.'}
+
+VERDICT RULES — apply strictly:
+- "Strong Hire": Overall 80+, Technical 75+, HR 70+
+- "Hire": Overall 65+, Technical 60+
+- "Borderline": Overall 45-64 OR Technical below 50
+- "Not Ready": Overall below 45 OR Technical below 35
+- If technical below 40 → verdict CANNOT be Hire or Strong Hire
+
+ACTION PLAN RULES — this is the most important part:
+- Each step must be SPECIFIC to this candidate's actual weak answers and their resume/field
+- Reference their actual projects, skills, or role by name
+- Do NOT write generic advice like "practice more" or "revise core concepts"
+- BAD example: "Practice answering technical questions clearly"
+- GOOD example: "You couldn't explain your Django REST project clearly — write a 2-minute verbal explanation of what it does, the tech stack, and one challenge you solved. Practise saying it out loud daily."
+- GOOD example: "Your answer on SQL joins was vague — revise INNER, LEFT, RIGHT joins with real examples from your internship data and be ready to explain when you'd use each"
+- Steps should be immediately actionable this week, not vague long-term advice
 
 Return ONLY valid JSON:
-{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","quote":"<2 sentences honest assessment — name specific strengths AND weaknesses>","tech":"<2 sentences — be specific about what was weak or strong technically>","hr":"<2 sentences — be specific about communication and HR performance>","face":"<1 sentence on body language and confidence>","s1":"<most critical specific action step>","s2":"<second action step>","s3":"<third action step>"}`);
+{"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","quote":"<2 sentences direct honest assessment mentioning their specific role and actual performance>","tech":"<2 sentences specific to what they got right or wrong technically, mention actual topics from their answers>","hr":"<2 sentences on their communication and HR performance with specifics>","face":"<1 sentence on body language and confidence>","s1":"<specific action step tied to their weakest answer or skill gap — name the actual topic/project>","s2":"<specific action step for their second biggest gap — make it a concrete daily task>","s3":"<specific action step for their third gap OR a strength to double down on before interviews>"}`);
 
     document.getElementById('r-quote').textContent=`"${rep.quote}"`;
     document.getElementById('r-verdict-name').textContent=rep.verdict;
