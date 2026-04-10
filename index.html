@@ -909,7 +909,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
 if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ══ BACKEND URL — change this to your Render URL after deploying ══
-const BACKEND = 'https://your-backend.onrender.com';
+const BACKEND = 'https://campus-prep-backend.onrender.com';
 let SESSION_ID = null; // set when interview starts
 
 // ══ STATE ══
@@ -1769,9 +1769,7 @@ async function buildReport(){
       .map(t=>`Q: ${t.q}
 A: ${t.a.substring(0,200)}
 Score: ${t.score}/100 — ${t.fb}`)
-      .join('
-
-');
+      .join('\n\n');
 
     const bestAnswers=S.transcript
       .filter(t=>t.score>=70)
@@ -1780,9 +1778,7 @@ Score: ${t.score}/100 — ${t.fb}`)
       .map(t=>`Q: ${t.q}
 A: ${t.a.substring(0,150)}
 Score: ${t.score}/100`)
-      .join('
-
-');
+      .join('\n\n');
 
     // Resume snippet for context
     const resumeSnippet=(S.resumeText||'').substring(0,800);
