@@ -556,15 +556,19 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
           <p style="font-size:.8125rem;color:var(--on-surface-v)">Enable camera to preview</p>
         </div>
       </div>
-      <button class="cam-btn" id="pc-cam-btn" onclick="startPreCam()">
+      <button class="cam-btn" id="pc-cam-btn" onclick="startPreCamAndMic()">
         <span class="material-symbols-outlined" style="font-size:1.125rem">photo_camera</span>
-        <span id="pc-cam-txt">Enable Camera (optional)</span>
+        <span id="pc-cam-txt">Enable Camera &amp; Microphone</span>
       </button>
-      <button class="submit-btn" id="pc-start-btn" onclick="launchIV()">
+      <div id="pc-status" style="margin:.75rem 0;padding:.75rem 1rem;border-radius:.75rem;background:var(--error-container);border:1px solid rgba(186,26,26,.2);display:flex;align-items:center;gap:.5rem">
+        <span class="material-symbols-outlined" style="font-size:1rem;color:var(--error)">warning</span>
+        <span style="font-size:.8125rem;color:var(--error);font-weight:600">Camera and microphone are required to start the interview.</span>
+      </div>
+      <button class="submit-btn" id="pc-start-btn" onclick="launchIV()" disabled style="opacity:.4;cursor:not-allowed">
         <span class="material-symbols-outlined" style="font-size:1.125rem">fullscreen</span>
         Enter Fullscreen &amp; Start Interview
       </button>
-      <p style="text-align:center;font-size:.75rem;color:var(--outline);margin-top:.875rem">Camera is optional. The interview works without it.</p>
+      <p style="text-align:center;font-size:.75rem;color:var(--outline);margin-top:.875rem">You must enable both camera and mic to proceed.</p>
     </div>
   </div>
 </div>
@@ -1091,6 +1095,9 @@ async function goPrecheck(){
     S.questions=qs;
     initTTS();
     showScreen('s2');
+    // Auto-trigger camera+mic request immediately when precheck loads
+    // Student sees the permissions popup right away
+    setTimeout(()=>startPreCamAndMic(), 500);
   }catch(err){
     alert('Error: '+err.message);
     btn.disabled=false;
@@ -1100,18 +1107,67 @@ async function goPrecheck(){
   }
 }
 
-// ── Precheck camera ──
-async function startPreCam(){
+// ── Precheck camera + mic (both required) ──
+async function startPreCamAndMic(){
+  const btn=document.getElementById('pc-cam-btn');
+  const statusEl=document.getElementById('pc-status');
+  const startBtn=document.getElementById('pc-start-btn');
+  btn.disabled=true;
+  document.getElementById('pc-cam-txt').textContent='Requesting permissions...';
+
+  // Step 1: Request camera
   try{
-    S.preStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    S.preStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
+      audio:false
+    });
     document.getElementById('pc-vid').srcObject=S.preStream;
     document.getElementById('pc-overlay').style.display='none';
-    document.getElementById('pc-cam-txt').textContent='✓ Camera Enabled';
-    document.getElementById('pc-cam-btn').classList.add('cam-on');
     S.camActive=true;
   }catch(e){
-    alert('Camera denied: '+e.message+'\nYou can still continue without it.');
+    btn.disabled=false;
+    document.getElementById('pc-cam-txt').textContent='Enable Camera & Microphone';
+    statusEl.style.background='var(--error-container)';
+    statusEl.style.borderColor='rgba(186,26,26,.2)';
+    statusEl.innerHTML=`<span class="material-symbols-outlined" style="font-size:1rem;color:var(--error)">error</span>
+      <span style="font-size:.8125rem;color:var(--error);font-weight:600">Camera blocked: ${e.message}. Allow camera in browser settings and try again.</span>`;
+    return;
   }
+
+  // Step 2: Request mic + verify it actually works
+  try{
+    const micStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    // Test mic has active audio tracks
+    const audioTracks=micStream.getAudioTracks();
+    if(!audioTracks.length || audioTracks[0].readyState!=='live'){
+      throw new Error('Microphone not detected or not active.');
+    }
+    // Stop mic test stream — SpeechRecognition manages its own mic
+    micStream.getTracks().forEach(t=>t.stop());
+    S.micActive=true;
+  }catch(e){
+    // Stop camera too since we can't proceed
+    if(S.preStream) S.preStream.getTracks().forEach(t=>t.stop());
+    S.camActive=false;
+    btn.disabled=false;
+    document.getElementById('pc-cam-txt').textContent='Enable Camera & Microphone';
+    statusEl.style.background='var(--error-container)';
+    statusEl.innerHTML=`<span class="material-symbols-outlined" style="font-size:1rem;color:var(--error)">error</span>
+      <span style="font-size:.8125rem;color:var(--error);font-weight:600">Microphone blocked: ${e.message}. Allow mic in browser settings and try again.</span>`;
+    return;
+  }
+
+  // Both camera and mic confirmed — unlock Start button
+  btn.disabled=false;
+  document.getElementById('pc-cam-txt').textContent='✓ Camera & Mic Enabled';
+  btn.classList.add('cam-on');
+  statusEl.style.background='rgba(22,128,61,.08)';
+  statusEl.style.borderColor='rgba(22,128,61,.25)';
+  statusEl.innerHTML=`<span class="material-symbols-outlined" style="font-size:1rem;color:var(--green)">check_circle</span>
+    <span style="font-size:.8125rem;color:var(--green);font-weight:600">Camera and microphone are ready. You can start the interview.</span>`;
+  startBtn.disabled=false;
+  startBtn.style.opacity='1';
+  startBtn.style.cursor='pointer';
 }
 
 // ── Launch interview ──
@@ -1163,6 +1219,14 @@ async function launchIV(){
   renderProg();
   startGlobalTimer();
   enableInput(true);
+
+  // Pre-warm mic — ensures browser mic permission is active before first question
+  // This prevents the silent fail where SpeechRecognition starts but gets no audio
+  try{
+    const warmup=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    warmup.getTracks().forEach(t=>t.stop()); // immediately release
+  }catch(e){ console.warn('Mic warmup failed:',e.message); }
+
   await beginRound('tech');
 }
 
@@ -1371,7 +1435,7 @@ function startRec(){
       }
     } else if(e.error==='not-allowed'){
       btn.classList.remove('rec');
-      renderVbox(S.voiceFinal,'Microphone blocked. Please allow mic access in browser settings.');
+      renderVbox(S.voiceFinal,'⚠️ Microphone blocked. Click the lock icon in your browser address bar → allow microphone → then click the mic button again.');
     } else {
       btn.classList.remove('rec');
       renderVbox(S.voiceFinal,'Error: '+e.error+'. Click mic to retry.');
