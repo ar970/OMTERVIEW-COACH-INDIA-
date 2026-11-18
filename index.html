@@ -1319,7 +1319,7 @@ function startQTimer(){
 function stopQTimer(){ clearInterval(S.qTimerID); S.qTimerID=null; }
 
 function resetTimerUI(){
-  document.getElementById('iv-qtimer').textContent='3:00';
+  document.getElementById('iv-qtimer').textContent=Math.floor(S.qLimit/60)+':'+String(S.qLimit%60).padStart(2,'0');
   document.getElementById('iv-qtimer').style.color='var(--on-surface)';
   const ring=document.getElementById('iv-tring');
   ring.style.strokeDashoffset='0'; ring.style.stroke='var(--primary)';
@@ -1338,9 +1338,10 @@ function updateTimerUI(){
 }
 
 function autoSubmit(){
+  stopRec();                      // keep words the student was mid-way through saying
   const ta=document.getElementById('iv-anta');
   const ans=(ta.value||S.voiceFinal||'[No answer — time expired]').trim();
-  ta.value=''; S.voiceFinal='';
+  ta.value=''; clearVoice();
   processAnswer(ans);
 }
 
@@ -1359,6 +1360,7 @@ function startGlobalTimer(){
 // ── Voice ──
 function setMode(m){
   S.mode=m;
+  if(m!=='voice') stopRec();
   document.getElementById('iv-mbtn-text').className='mode-btn'+(m==='text'?' active':'');
   document.getElementById('iv-mbtn-voice').className='mode-btn'+(m==='voice'?' active':'');
   document.getElementById('iv-text-panel').style.display=m==='text'?'block':'none';
@@ -1367,109 +1369,130 @@ function setMode(m){
 
 function toggleMic(){
   if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
-    alert('Voice input requires Google Chrome.'); return;
+    alert('Voice input needs Google Chrome or Microsoft Edge. Brave, Firefox and Safari are not supported.'); return;
   }
-  if(S.rec&&S.rec.going){ S.rec.going=false; S.rec.stop(); return; }
+  if(S.rec||_waitTTS){ stopRec(); return; }   // second click = stop
   startRec();
 }
 
-// Stores interim text ACROSS restarts so no words are lost
-let _pendingInterim = '';
+// ── Speech recognition controller ──
+// Only ONE recognizer may exist at a time. Every recognizer gets a generation
+// number; handlers from an older generation are ignored, so a restart can never
+// spawn duplicates (the old bug: onerror AND onend both restarted, creating two
+// recognizers that aborted each other in a loop).
+let _pendingInterim = '';  // words heard but not yet finalised by Chrome
+let _recGen = 0;
+let _restartFails = 0;
+let _waitTTS = null;
+
+function commitPending(){
+  if(_pendingInterim.trim()){ S.voiceFinal += _pendingInterim.trim()+' '; }
+  _pendingInterim='';
+}
+
+function killRec(){
+  _recGen++;
+  const o=S.rec; S.rec=null;
+  if(o){ o.onresult=null; o.onerror=null; o.onend=null; o.onaudiostart=null; try{ o.abort(); }catch(e){} }
+}
 
 function startRec(){
   if(S.busy||S.terminated) return;
+  const btn=document.getElementById('iv-micbtn');
+
+  // Don't listen while the interviewer is talking — the mic would transcribe the AI's own voice.
+  if(window.speechSynthesis.speaking){
+    btn.classList.add('rec');
+    renderVbox(S.voiceFinal,'Mic will turn on when the interviewer finishes...');
+    clearTimeout(_waitTTS);
+    _waitTTS=setTimeout(()=>{ _waitTTS=null; startRec(); },300);
+    return;
+  }
+  clearTimeout(_waitTTS); _waitTTS=null;
+
+  killRec();
+  const gen=++_recGen;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const r=new SR();
-
-  // en-US gives Chrome's highest accuracy model
-  // en-IN sometimes falls back to a lower quality server
   r.continuous=true;
   r.interimResults=true;
-  r.lang='en-US';
-  r.maxAlternatives=3;
-  // Add SpeechGrammarList if supported — improves accuracy for interview vocabulary
-  if(window.SpeechGrammarList || window.webkitSpeechGrammarList){
-    const SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
-    const grammar='#JSGF V1.0; grammar interview; public <interview> = project | experience | team | challenge | solution | result | technology | framework | database | algorithm | design | system | customer | goal | strength | weakness | leadership | internship | college | skills | Python | Java | JavaScript | React | Node | SQL | machine learning | deep learning | data | API | backend | frontend | cloud | AWS | deployment | agile | scrum ;';
-    const list=new SGL();
-    list.addFromString(grammar,1);
-    r.grammars=list;
-  }
-  r.going=true;
+  r.lang='en-IN';          // Indian-English model: better for Indian accents
+  r.maxAlternatives=1;
   r.shouldRestart=true;
   S.rec=r;
 
-  const btn=document.getElementById('iv-micbtn');
   btn.classList.add('rec');
-  if(!S.voiceFinal && !_pendingInterim) renderVbox('','Listening — speak clearly and close to mic...');
+  if(!S.voiceFinal) renderVbox('','Starting mic...');
+
+  r.onaudiostart=()=>{
+    if(gen!==_recGen) return;
+    if(!S.voiceFinal && !_pendingInterim) renderVbox('','🎙️ Listening — speak now');
+  };
 
   r.onresult=(e)=>{
+    if(gen!==_recGen) return;
+    _restartFails=0;
     let interim='';
     for(let i=e.resultIndex;i<e.results.length;i++){
-      const result=e.results[i];
-      if(result.isFinal){
-        // Pick highest confidence alternative
-        let bestText=result[0].transcript;
-        let bestConf=result[0].confidence||0;
-        for(let j=1;j<result.length;j++){
-          if((result[j].confidence||0)>bestConf){
-            bestConf=result[j].confidence;
-            bestText=result[j].transcript;
-          }
-        }
-        S.voiceFinal+=bestText+' ';
-        _pendingInterim=''; // clear pending since it became final
-      } else {
-        interim+=result[0].transcript;
-      }
+      const res=e.results[i];
+      if(res.isFinal){ S.voiceFinal+=res[0].transcript.trim()+' '; _pendingInterim=''; }
+      else interim+=res[0].transcript;
     }
-    // Save interim so if restart happens mid-word we show it
-    if(interim) _pendingInterim=interim;
-    renderVbox(S.voiceFinal, interim||_pendingInterim);
-    if(S.voiceFinal.trim()){
+    _pendingInterim=interim;
+    renderVbox(S.voiceFinal,interim);
+    if(S.voiceFinal.trim()||interim.trim()){
       document.getElementById('iv-vsend').classList.add('show');
       document.getElementById('iv-vclear').classList.add('show');
     }
   };
 
   r.onerror=(e)=>{
-    r.going=false;
-    if(e.error==='no-speech'||e.error==='network'||e.error==='audio-capture'){
-      // Restart immediately — don't remove rec class so user sees continuity
-      if(r.shouldRestart&&S.mode==='voice'&&!S.busy&&!S.terminated){
-        setTimeout(()=>startRec(),50); // near-instant restart
-      } else {
-        btn.classList.remove('rec');
-      }
-    } else if(e.error==='not-allowed'){
-      btn.classList.remove('rec');
-      renderVbox(S.voiceFinal,'⚠️ Microphone blocked. Click the lock icon in your browser address bar → allow microphone → then click the mic button again.');
-    } else {
-      btn.classList.remove('rec');
-      renderVbox(S.voiceFinal,'Error: '+e.error+'. Click mic to retry.');
-    }
+    if(gen!==_recGen) return;
+    // Silence / our own aborts: harmless, onend restarts the mic.
+    if(e.error==='no-speech'||e.error==='aborted') return;
+    if(e.error==='network'){ _restartFails++; return; }
+    // Fatal errors: stop restarting and tell the student exactly what to do.
+    r.shouldRestart=false;
+    const msg={
+      'not-allowed':'⚠️ Microphone blocked. Click the lock icon in the address bar → allow Microphone → click the mic again.',
+      'service-not-allowed':'⚠️ Microphone blocked. Click the lock icon in the address bar → allow Microphone → click the mic again.',
+      'audio-capture':'⚠️ No microphone found. Plug in or enable a mic, then click the mic again.'
+    }[e.error]||('Mic error: '+e.error+'. Click the mic to retry, or switch to Text mode.');
+    renderVbox(S.voiceFinal,msg);
   };
 
   r.onend=()=>{
-    r.going=false;
+    if(gen!==_recGen) return;
+    commitPending();                 // never lose words when Chrome cuts the session
     if(r.shouldRestart&&S.mode==='voice'&&!S.busy&&!S.terminated){
-      // Immediate restart — any words spoken during gap will be caught
-      // by the next session's first interim result
-      startRec();
+      if(_restartFails>=5){
+        S.rec=null; btn.classList.remove('rec');
+        renderVbox(S.voiceFinal,'⚠️ Voice service unreachable (check your internet). Click the mic to retry, or switch to Text mode.');
+        return;
+      }
+      const delay=_restartFails?Math.min(3000,400*_restartFails):100;
+      setTimeout(()=>{ if(gen===_recGen) startRec(); },delay);
     } else {
-      btn.classList.remove('rec');
+      S.rec=null; btn.classList.remove('rec');
     }
   };
 
-  try{ r.start(); }catch(ex){
-    btn.classList.remove('rec');
+  try{ r.start(); }
+  catch(ex){
+    S.rec=null; btn.classList.remove('rec');
+    renderVbox(S.voiceFinal,'Could not start the mic. Click it again.');
     console.warn('rec.start() failed:',ex.message);
   }
 }
 
 function stopRec(){
-  if(S.rec){ S.rec.shouldRestart=false; S.rec.going=false; try{ S.rec.stop(); }catch(e){} }
-  document.getElementById('iv-micbtn').classList.remove('rec');
+  clearTimeout(_waitTTS); _waitTTS=null;
+  commitPending();
+  killRec();
+  const btn=document.getElementById('iv-micbtn');
+  if(btn) btn.classList.remove('rec');
+  const box=document.getElementById('iv-vbox');
+  if(box) renderVbox(S.voiceFinal,'');
 }
 
 function renderVbox(final,interim){
@@ -1481,9 +1504,10 @@ function renderVbox(final,interim){
 }
 
 function sendVoiceAnswer(){
+  stopRec();                      // commits any words still in progress
   const ans=S.voiceFinal.trim();
   if(!ans){ alert('Please speak your answer first.'); return; }
-  stopRec(); clearVoice(); processAnswer(ans);
+  clearVoice(); processAnswer(ans);
 }
 
 function clearVoice(){
@@ -1556,10 +1580,10 @@ async function askQ(round,idx){
 
   updateDots(round,idx);
   setQ(`Q${idx+1} of ${S.qPer} · ${round==='tech'?'Technical':'HR'}`,q);
-  document.getElementById('iv-hint').textContent=`// Q${idx+1}/${S.qPer} · ${S.mode==='voice'?'Press mic to speak':'Type + Enter to send'}`;
+  document.getElementById('iv-hint').textContent=`// Q${idx+1}/${S.qPer} · ${S.mode==='voice'?'Mic turns on after the question':'Type + Enter to send'}`;
   startQTimer();
   enableInput(true);
-  speak(q);
+  speak(q,()=>{ if(S.mode==='voice'&&!S.busy&&!S.terminated&&!S.rec) startRec(); });
 }
 
 async function submitAnswer(){
