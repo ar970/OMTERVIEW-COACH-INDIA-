@@ -165,6 +165,9 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
 
 .vbanner { display:none; background:var(--error-container); border-bottom:1px solid rgba(186,26,26,.25); padding:.5rem 1rem; text-align:center; font-size:.75rem; font-weight:700; color:var(--error); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
 .vbanner.show { display:block; }
+.fs-lock { position:fixed; inset:0; z-index:10000; background:rgba(28,28,25,.92); display:none; align-items:center; justify-content:center; padding:1.25rem; }
+.fs-lock.show { display:flex; }
+.fs-lock-card { background:var(--cream); border-radius:1.25rem; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.3); }
 
 .iv-body { flex:1; display:grid; grid-template-columns:220px 1fr 260px; overflow:hidden; }
 @media(max-width:1024px){ .iv-body{grid-template-columns:1fr 260px;} .iv-left{display:none;} }
@@ -743,6 +746,15 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
 </div>
 
 <!-- End modal -->
+<div class="fs-lock" id="fs-lock">
+  <div class="fs-lock-card">
+    <div style="font-size:2.25rem;margin-bottom:.5rem">⛶</div>
+    <h3 class="serif" style="font-size:1.5rem;margin-bottom:.5rem">You left fullscreen</h3>
+    <p id="fs-lock-msg" style="font-size:.875rem;color:var(--on-surface-v);line-height:1.6;margin-bottom:.75rem"></p>
+    <p id="fs-lock-count" style="font-family:'JetBrains Mono',monospace;font-size:.8125rem;font-weight:700;color:var(--error);margin-bottom:1.25rem"></p>
+    <button onclick="returnToFullscreen()" style="width:100%;padding:.875rem;border:none;border-radius:999px;background:var(--primary);color:#fff;font-weight:700;font-size:.9375rem;cursor:pointer">Return to fullscreen</button>
+  </div>
+</div>
 <div class="modal-backdrop" id="end-modal">
   <div class="modal-card">
     <span style="font-size:3rem;display:block;margin-bottom:1rem">⏹️</span>
@@ -1166,6 +1178,7 @@ async function startPreCamAndMic(){
   statusEl.innerHTML=`<span class="material-symbols-outlined" style="font-size:1rem;color:var(--green)">check_circle</span>
     <span style="font-size:.8125rem;color:var(--green);font-weight:600">Camera and microphone are ready. You can start the interview.</span>`;
   startBtn.disabled=false;
+  loadFaceModel();   // download the face model in the background
   startBtn.style.opacity='1';
   startBtn.style.cursor='pointer';
 }
@@ -1215,6 +1228,7 @@ async function launchIV(){
   }catch(e){ console.warn('Could not create session record:',e.message); }
 
   setupProctoring();
+  startFaceTracking();
   buildDots('tech');
   renderProg();
   startGlobalTimer();
@@ -1253,26 +1267,55 @@ function speak(text,cb){
 function setWave(on){ document.getElementById('iv-wave').style.display=on?'flex':'none'; }
 
 // ── Proctoring ──
+// Browsers only allow fullscreen after a real click, so it can't be re-entered silently.
+// Leaving fullscreen locks the interview behind a "Return to fullscreen" screen instead.
+// One incident (e.g. Alt+Tab fires blur + tab-hidden + fullscreen-exit) counts as ONE violation.
 function setupProctoring(){
+  S.lastViolAt=0; S.fsLocked=false;
+  const active=()=>!S.terminated&&!S.reportStarted;
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden&&!S.terminated&&!S.reportStarted) logViol('Tab switch detected');
+    if(document.hidden&&active()) logViol('Switched to another tab or window');
   });
   window.addEventListener('blur',()=>{
-    if(!S.terminated&&!S.reportStarted) logViol('Window focus lost');
+    if(active()) logViol('Left the interview window');
   });
-  document.addEventListener('fullscreenchange',()=>{
-    if(!document.fullscreenElement&&!S.terminated&&!S.reportStarted){
-      const ban=document.getElementById('iv-vbanner');
-      ban.textContent='⚠ Fullscreen exited — re-entering...';
-      ban.classList.add('show');
-      setTimeout(()=>{ document.documentElement.requestFullscreen().catch(()=>{}); },1000);
-      setTimeout(()=>ban.classList.remove('show'),3500);
-    }
-  });
+  if(document.fullscreenEnabled){
+    document.addEventListener('fullscreenchange',()=>{
+      if(!active()) return;
+      if(document.fullscreenElement) unlockFullscreen();
+      else { logViol('Exited fullscreen'); lockFullscreen(); }
+    });
+    if(!document.fullscreenElement) lockFullscreen();   // fullscreen was refused at launch
+  }
+}
+
+function lockFullscreen(){
+  if(S.terminated||S.reportStarted||S.fsLocked) return;
+  S.fsLocked=true;
+  S.fsMicWasOn=!!S.rec||!!_waitTTS;
+  stopRec();
+  document.getElementById('fs-lock-msg').textContent='The interview is paused. Return to fullscreen to continue. Leaving fullscreen or switching tabs counts as a violation.';
+  document.getElementById('fs-lock-count').textContent=`Violations: ${S.violCount} / ${S.maxViol}`;
+  document.getElementById('fs-lock').classList.add('show');
+}
+
+function unlockFullscreen(){
+  if(!S.fsLocked) return;
+  S.fsLocked=false;
+  document.getElementById('fs-lock').classList.remove('show');
+  if(S.fsMicWasOn&&S.mode==='voice'&&!S.busy&&!S.terminated) startRec();
+}
+
+async function returnToFullscreen(){
+  try{ await document.documentElement.requestFullscreen(); }
+  catch(e){ document.getElementById('fs-lock-msg').textContent='Your browser blocked fullscreen. Click the button again, or press F11.'; }
 }
 
 function logViol(reason){
-  if(S.terminated) return;
+  if(S.terminated||S.reportStarted) return;
+  const now=Date.now();
+  if(now-(S.lastViolAt||0)<3000) return;          // same incident, already counted
+  S.lastViolAt=now;
   S.violCount++;
   const t=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   S.violations.push({reason,time:t,n:S.violCount});
@@ -1290,18 +1333,32 @@ function logViol(reason){
   d.textContent=`[${t}] #${S.violCount}: ${reason}`;
   vlog.insertBefore(d,vlog.firstChild);
 
+  if(S.violCount>=S.maxViol){ terminateInterview(reason); return; }
   const ban=document.getElementById('iv-vbanner');
-  if(S.violCount>=S.maxViol){
-    ban.textContent='⛔ Maximum violations — interview terminated.';
-    ban.classList.add('show');
-    S.terminated=true;
-    enableInput(false); stopQTimer();
-    setTimeout(()=>buildReport(),2000);
-  } else {
-    ban.textContent=`⚠ Violation ${S.violCount}/${S.maxViol}: ${reason}`;
-    ban.classList.add('show');
-    setTimeout(()=>ban.classList.remove('show'),4000);
-  }
+  ban.textContent=`⚠ Violation ${S.violCount}/${S.maxViol}: ${reason}. ${S.maxViol-S.violCount===1?'One more ends the interview.':''}`;
+  ban.classList.add('show');
+  setTimeout(()=>ban.classList.remove('show'),5000);
+  const c=document.getElementById('fs-lock-count');
+  if(c) c.textContent=`Violations: ${S.violCount} / ${S.maxViol}`;
+}
+
+function terminateInterview(reason){
+  S.terminated=true; S.reportStarted=true;
+  S.fsLocked=false; document.getElementById('fs-lock').classList.remove('show');
+  clearInterval(S.gTimerID); stopQTimer(); stopRec(); enableInput(false);
+  window.speechSynthesis.cancel();
+  const ban=document.getElementById('iv-vbanner');
+  ban.textContent=`⛔ Interview terminated: ${S.maxViol} proctoring violations (last: ${reason}).`;
+  ban.classList.add('show');
+  setQ('Interview terminated',`The interview rules were broken ${S.maxViol} times, so this interview has ended. Generating your report...`);
+  setTimeout(()=>buildReport(),2500);
+}
+
+// Non-blocking message (alert() would steal focus and count as a violation)
+function notify(msg){
+  const b=document.getElementById('iv-vbanner');
+  b.textContent=msg; b.classList.add('show');
+  clearTimeout(notify._t); notify._t=setTimeout(()=>b.classList.remove('show'),3500);
 }
 
 // ── Q Timer ──
@@ -1309,7 +1366,7 @@ function startQTimer(){
   stopQTimer(); S.qElapsed=0;
   resetTimerUI();
   S.qTimerID=setInterval(()=>{
-    if(S.busy) return;
+    if(S.busy||S.fsLocked) return;
     S.qElapsed++;
     updateTimerUI();
     if(S.qElapsed>=S.qLimit){ stopQTimer(); autoSubmit(); }
@@ -1369,7 +1426,7 @@ function setMode(m){
 
 function toggleMic(){
   if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
-    alert('Voice input needs Google Chrome or Microsoft Edge. Brave, Firefox and Safari are not supported.'); return;
+    notify('Voice input needs Google Chrome or Microsoft Edge. Switch to Text mode.'); return;
   }
   if(S.rec||_waitTTS){ stopRec(); return; }   // second click = stop
   startRec();
@@ -1506,7 +1563,7 @@ function renderVbox(final,interim){
 function sendVoiceAnswer(){
   stopRec();                      // commits any words still in progress
   const ans=S.voiceFinal.trim();
-  if(!ans){ alert('Please speak your answer first.'); return; }
+  if(!ans){ notify('Please speak your answer first.'); return; }
   clearVoice(); processAnswer(ans);
 }
 
@@ -1527,25 +1584,115 @@ function captureFrame(){
   }catch(e){ return null; }
 }
 
-async function analyzeFace(b64,q,a){
-  if(!b64||!S.camActive) return null;
-  try{
-    // Route through backend — uses Groq to analyze face data
-    // Since Groq doesn't support vision, we use heuristic analysis
-    // based on camera availability and generate plausible face scores
-    // For real vision analysis, upgrade to a vision-capable backend model
-    const res=await fetch(`${BACKEND}/api/ai/analyze-face`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({question:q,answer:a.substring(0,100),hasCamera:true})
-    });
-    if(!res.ok) return null;
-    return await res.json();
-  }catch(e){
-    // Fallback: generate face scores based on answer quality if camera active
-    // This ensures face section isn't always empty
-    return null;
-  }
+// Real face analysis with MediaPipe Face Landmarker. Runs entirely in the student's
+// browser (no API, no cost, no video uploaded). Samples the webcam twice a second.
+const MP_VER='0.10.14';
+const FACE={lm:null,loading:null,failed:false,loopId:null,lastT:-1,win:null,live:null,ticks:0};
+function faceNewWindow(){ return {n:0,present:0,eye:0,down:0,away:0,multi:0,smile:0,tension:0,move:0,moveN:0,prev:null}; }
+function bs(cats,name){ const c=cats.find(x=>x.categoryName===name); return c?c.score:0; }
+function clamp100(v){ return Math.max(0,Math.min(100,Math.round(v))); }
+
+function loadFaceModel(){
+  if(FACE.loading) return FACE.loading;
+  FACE.loading=(async()=>{
+    try{
+      const v=await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/vision_bundle.mjs`);
+      const fs=await v.FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/wasm`);
+      const opts=d=>({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:d},
+        runningMode:'VIDEO',numFaces:2,outputFaceBlendshapes:true});
+      try{ FACE.lm=await v.FaceLandmarker.createFromOptions(fs,opts('GPU')); }
+      catch(e){ FACE.lm=await v.FaceLandmarker.createFromOptions(fs,opts('CPU')); }
+    }catch(e){ FACE.failed=true; console.warn('Face analysis unavailable:',e); }
+  })();
+  return FACE.loading;
+}
+
+async function startFaceTracking(){
+  if(!S.camActive) { setFacePillsStatus('—'); return; }
+  FACE.win=faceNewWindow(); FACE.live=faceNewWindow();
+  setFacePillsStatus('…');
+  await loadFaceModel();
+  if(FACE.failed||!FACE.lm){ setFacePillsStatus('n/a'); return; }
+  if(S.reportStarted) return;
+  clearInterval(FACE.loopId);
+  FACE.loopId=setInterval(faceTick,500);
+}
+
+function stopFaceTracking(){
+  clearInterval(FACE.loopId); FACE.loopId=null;
+  try{ FACE.lm&&FACE.lm.close(); }catch(e){}
+  FACE.lm=null;
+}
+
+function faceTick(){
+  if(!FACE.lm||S.reportStarted||S.fsLocked) return;
+  const vid=document.getElementById('iv-cvid');
+  if(!vid||vid.readyState<2||!vid.videoWidth) return;
+  const t=performance.now(); if(t<=FACE.lastT) return; FACE.lastT=t;
+  let r; try{ r=FACE.lm.detectForVideo(vid,t); }catch(e){ return; }
+  const smp=faceSample(r);
+  if(FACE.win) faceAdd(FACE.win,smp);
+  faceAdd(FACE.live,smp);
+  if(++FACE.ticks%2===0){ const sc=faceScore(FACE.live); if(sc) updateFacePills(sc); }  // live pills, every 1s
+  if(FACE.live.n>=20) FACE.live=faceNewWindow();                                        // rolling ~10s window
+}
+
+// One webcam frame -> what the face is doing
+function faceSample(r){
+  const faces=(r&&r.faceLandmarks)||[];
+  if(!faces.length) return {present:false};
+  const L=faces[0];
+  const cats=(r.faceBlendshapes&&r.faceBlendshapes[0]&&r.faceBlendshapes[0].categories)||[];
+  const le=L[33], re=L[263], nose=L[1];                       // outer eye corners, nose tip
+  const ed=Math.hypot(re.x-le.x,re.y-le.y)||1e-6;
+  const yaw=(nose.x-(le.x+re.x)/2)/ed;                         // ~0 when facing the camera
+  const side=Math.max(bs(cats,'eyeLookOutLeft'),bs(cats,'eyeLookOutRight'),bs(cats,'eyeLookInLeft'),bs(cats,'eyeLookInRight'));
+  const lookDown=(bs(cats,'eyeLookDownLeft')+bs(cats,'eyeLookDownRight'))/2;
+  const lookUp=(bs(cats,'eyeLookUpLeft')+bs(cats,'eyeLookUpRight'))/2;
+  const down=lookDown>0.6;
+  const away=Math.abs(yaw)>0.35||side>0.6||lookUp>0.65;
+  return {present:true,multi:faces.length>1,eye:!down&&!away,down,away,
+    smile:(bs(cats,'mouthSmileLeft')+bs(cats,'mouthSmileRight'))/2,
+    tension:(bs(cats,'browDownLeft')+bs(cats,'browDownRight'))/2,
+    nx:nose.x,ny:nose.y,ed};
+}
+
+function faceAdd(w,smp){
+  w.n++;
+  if(!smp.present){ w.prev=null; return; }
+  w.present++;
+  if(smp.eye) w.eye++; if(smp.down) w.down++; if(smp.away) w.away++; if(smp.multi) w.multi++;
+  w.smile+=smp.smile; w.tension+=smp.tension;
+  if(w.prev){ w.move+=Math.hypot(smp.nx-w.prev.x,smp.ny-w.prev.y)/smp.ed; w.moveN++; }
+  w.prev={x:smp.nx,y:smp.ny};
+}
+
+// Many frames -> scores (0-100) + one coaching note
+function faceScore(w){
+  if(!w||w.n<4) return null;
+  const presence=clamp100(100*w.present/w.n);
+  const eye=clamp100(100*w.eye/w.n);
+  const p=Math.max(w.present,1);
+  const smile=w.smile/p, tension=w.tension/p;
+  const avgMove=w.moveN?w.move/w.moveN:0;
+  const steady=clamp100(100-Math.max(0,avgMove-0.03)*700);
+  const expression=w.present?clamp100(65+smile*70-tension*80):0;
+  const confidence=clamp100(0.4*eye+0.35*steady*presence/100+0.25*presence);
+  const overall=clamp100(0.45*eye+0.35*confidence+0.2*expression);
+  let note;
+  if(presence<60) note=`Face visible only ${presence}% of the time`;
+  else if(w.multi/w.n>0.2) note='Another person appeared on camera';
+  else if(w.down/w.n>0.35) note='Often looked down, away from the camera';
+  else if(w.away/w.n>0.35) note='Often looked away from the camera';
+  else if(steady<50) note='A lot of head movement, try to sit still';
+  else if(tension>0.35) note='Looked tense, try to relax your face';
+  else if(eye>=70) note='Good eye contact and steady presence';
+  else note='Eye contact was inconsistent';
+  return {eyeContact:eye,confidence,expression,overall,presence,note};
+}
+
+function setFacePillsStatus(txt){
+  ['e','c','x'].forEach(k=>{ const el=document.getElementById(`fp-${k}-n`); if(el){ el.textContent=txt; el.style.color='var(--outline)'; } });
 }
 
 // ── Interview flow ──
@@ -1583,6 +1730,7 @@ async function askQ(round,idx){
   document.getElementById('iv-hint').textContent=`// Q${idx+1}/${S.qPer} · ${S.mode==='voice'?'Mic turns on after the question':'Type + Enter to send'}`;
   startQTimer();
   enableInput(true);
+  FACE.win=faceNewWindow();
   speak(q,()=>{ if(S.mode==='voice'&&!S.busy&&!S.terminated&&!S.rec) startRec(); });
 }
 
@@ -1619,8 +1767,9 @@ Judge the answer against what a "${S.role}" needs. "relevance" means how well th
 Apply the scoring rules strictly. Do not be modest or encouraging with scores.
 Return ONLY valid JSON:
 {"score":<0-100>,"communication":<0-100>,"relevance":<0-100>,"depth":<0-100>,"feedback":"<1 blunt honest sentence — what was wrong or right>","reaction":"<2-4 word natural interviewer reaction>","followUp":"<a probing follow-up question if answer was vague or incomplete, else empty string>"}`),
-      analyzeFace(frame,q,ans)
+      Promise.resolve(faceScore(FACE.win))
     ]);
+    if(S.terminated){ S.busy=false; return; }
 
     S.transcript.push({round:S.round,qIdx:S.qIdx,q,a:ans,score:ev.score,fb:ev.feedback});
     S.scores[S.round].push(ev.score);
@@ -1652,7 +1801,7 @@ Return ONLY valid JSON:
     if(doFU){
       S.followUp=true;
       setQ(`Follow-up · Q${S.qIdx+1}`,ev.followUp);
-      speak(ev.followUp); startQTimer(); enableInput(true);
+      speak(ev.followUp); startQTimer(); enableInput(true); FACE.win=faceNewWindow();
       document.getElementById('iv-hint').textContent='// Follow-up — answer it';
     } else if(more){
       await askQ(S.round,next);
@@ -1812,6 +1961,9 @@ function addNote(txt,score){
 
 // ── Report ──
 async function buildReport(){
+  S.reportStarted=true;
+  stopFaceTracking();
+  document.getElementById('fs-lock').classList.remove('show');
   clearInterval(S.gTimerID); stopQTimer(); stopRec(); enableInput(false);
   window.speechSynthesis.cancel();
   if(S.camStream) S.camStream.getTracks().forEach(t=>t.stop());
@@ -1940,7 +2092,24 @@ ACTION PLAN RULES — this is the most important part:
 Return ONLY valid JSON:
 {"verdict":"<Strong Hire|Hire|Borderline|Not Ready>","quote":"<2 sentences direct honest assessment mentioning their specific role and actual performance>","tech":"<2 sentences specific to what they got right or wrong technically, mention actual topics from their answers>","hr":"<2 sentences on their communication and HR performance with specifics>","face":"<1 sentence on body language and confidence>","s1":"<specific action step tied to their weakest answer or skill gap — name the actual topic/project>","s2":"<specific action step for their second biggest gap — make it a concrete daily task>","s3":"<specific action step for their third gap OR a strength to double down on before interviews>"}`);
 
+    if(S.terminated){   // malpractice = disqualified, whatever the answers scored
+      rep.verdict='Not Ready';
+      rep.quote=`Interview terminated after ${S.violCount} proctoring violations (tab switching / leaving fullscreen). `+(rep.quote||'');
+    }
     document.getElementById('r-quote').textContent=`"${rep.quote}"`;
+    // Save verdict + written feedback + action plan so the admin dashboard shows them
+    if(SESSION_ID){
+      fetch(`${BACKEND}/api/interview/save-report`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          sessionId:SESSION_ID, overallScore:overall, techScore:techAvg, hrScore:hrAvg, faceScore:faceAvg,
+          commAvg:commAvg, relAvg:relAvg, depthAvg:depthAvg,
+          violations:S.violations.length, totalDuration:S.gElapsed,
+          verdict:rep.verdict, quote:rep.quote, tech:rep.tech, hr:rep.hr, face:rep.face,
+          s1:rep.s1, s2:rep.s2, s3:rep.s3
+        })
+      }).catch(()=>{});
+    }
     document.getElementById('r-verdict-name').textContent=rep.verdict;
     document.getElementById('r-verdict-lbl').textContent=rep.verdict;
     document.getElementById('r-tech').textContent=rep.tech;
