@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CampusPrep — AI Interview Simulator (v21.11-c)</title>
+<title>CampusPrep — AI Interview Simulator (v21.11-d)</title>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..800;1,6..72,300..800&family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -583,7 +583,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
   <div class="iv-nav">
     <div style="display:flex;align-items:center;gap:.875rem">
       <span class="serif" style="font-size:1.125rem;font-style:italic;color:#9a3412">CampusPrep</span>
-      <span class="mono" style="font-size:.625rem;color:var(--outline)">v21.11-c</span>
+      <span class="mono" style="font-size:.625rem;color:var(--outline)">v21.11-d</span>
       <div class="round-pill tech" id="iv-rpill"><div class="pill-dot"></div><span id="iv-rlbl">Technical Round</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:.875rem">
@@ -1257,20 +1257,37 @@ function initTTS(){
   window.speechSynthesis.onvoiceschanged=load; load();
 }
 
+// We track the interviewer's voice ourselves. Chrome's speechSynthesis.speaking can stay
+// "true" forever (after leaving fullscreen / switching tabs, or on long sentences), which
+// used to leave the mic stuck on "Mic will turn on when the interviewer finishes".
+const TTS={active:false,until:0,timer:null,done:null};
+function ttsBusy(){ return TTS.active&&Date.now()<TTS.until; }
+function stopSpeaking(){ const d=TTS.done; window.speechSynthesis.cancel(); if(d) d(); }
+
 function speak(text,cb){
+  if(TTS.done){ const d=TTS.done; TTS.done=null; clearTimeout(TTS.timer); TTS.active=false; }  // replace, don't fire old cb
   window.speechSynthesis.cancel();
+  const words=String(text||'').split(/\s+/).length;
+  const maxMs=Math.max(3000,words*480+2500);          // generous upper bound for reading it out
+  let finished=false;
+  const finish=()=>{
+    if(finished) return; finished=true;
+    clearTimeout(TTS.timer); TTS.active=false; TTS.done=null; setWave(false);
+    if(cb) cb();
+  };
+  TTS.active=true; TTS.until=Date.now()+maxMs; TTS.done=finish;
+  TTS.timer=setTimeout(()=>{ window.speechSynthesis.cancel(); finish(); },maxMs);
   const u=new SpeechSynthesisUtterance(text);
   if(S.ttsVoice) u.voice=S.ttsVoice;
   u.lang='en-IN'; u.rate=.93; u.pitch=1; u.volume=1;
   setWave(true);
-  u.onend=()=>{ setWave(false); if(cb)cb(); };
-  u.onerror=()=>{ setWave(false); if(cb)cb(); };
+  u.onend=finish; u.onerror=finish;
   window.speechSynthesis.speak(u);
 }
 
 function setWave(on){ document.getElementById('iv-wave').style.display=on?'flex':'none'; }
 
-const APP_VERSION='v21.11-c';
+const APP_VERSION='v21.11-d';
 console.log('CampusPrep',APP_VERSION);
 function setFaceStatus(txt,bad){ const el=document.getElementById('face-status'); if(el){ el.textContent=txt; el.style.color=bad?'var(--error)':'var(--outline)'; } }
 function setProcStatus(){
@@ -1291,6 +1308,7 @@ function setupProctoring(){
   const active=()=>!S.terminated&&!S.reportStarted;
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden&&active()) logViol('Switched to another tab or window');
+    if(!document.hidden&&window.speechSynthesis.paused) stopSpeaking();
   });
   window.addEventListener('blur',()=>{
     if(active()) logViol('Left the interview window');
@@ -1329,6 +1347,7 @@ function unlockFullscreen(){
   document.removeEventListener('pointerdown',fsGestureRetry,true);
   document.removeEventListener('keydown',fsGestureRetry,true);
   document.getElementById('fs-lock').classList.remove('show');
+  if(window.speechSynthesis.paused) stopSpeaking();
   if(S.fsMicWasOn&&S.mode==='voice'&&!S.busy&&!S.terminated) startRec();
 }
 
@@ -1453,13 +1472,18 @@ function setMode(m){
   document.getElementById('iv-mbtn-voice').className='mode-btn'+(m==='voice'?' active':'');
   document.getElementById('iv-text-panel').style.display=m==='text'?'block':'none';
   document.getElementById('iv-voice-panel').style.display=m==='voice'?'block':'none';
+  const h=document.getElementById('iv-hint');
+  if(h&&/Type \+ Enter|Mic turns on/.test(h.textContent))
+    h.textContent=h.textContent.replace(/Type \+ Enter to send|Mic turns on after the question/,m==='voice'?'Mic turns on after the question':'Type + Enter to send');
+  if(m==='voice'&&!S.busy&&!S.terminated&&!S.rec&&!_waitTTS&&S.qTimerID) startRec();
 }
 
 function toggleMic(){
   if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
     notify('Voice input needs Google Chrome or Microsoft Edge. Switch to Text mode.'); return;
   }
-  if(S.rec||_waitTTS){ stopRec(); return; }   // second click = stop
+  if(_waitTTS||ttsBusy()){ clearTimeout(_waitTTS); _waitTTS=null; stopSpeaking(); startRec(); return; }  // answer now
+  if(S.rec){ stopRec(); return; }              // click while listening = stop
   startRec();
 }
 
@@ -1489,9 +1513,9 @@ function startRec(){
   const btn=document.getElementById('iv-micbtn');
 
   // Don't listen while the interviewer is talking — the mic would transcribe the AI's own voice.
-  if(window.speechSynthesis.speaking){
+  if(ttsBusy()){
     btn.classList.add('rec');
-    renderVbox(S.voiceFinal,'Mic will turn on when the interviewer finishes...');
+    renderVbox(S.voiceFinal,'Mic will turn on when the interviewer finishes... (or click the mic to answer now)');
     clearTimeout(_waitTTS);
     _waitTTS=setTimeout(()=>{ _waitTTS=null; startRec(); },300);
     return;
