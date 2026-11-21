@@ -1615,6 +1615,7 @@ Round: ${S.round==='tech'?'Technical':'HR'}
 Question: ${q}
 Candidate Answer: ${ans}
 
+Judge the answer against what a "${S.role}" needs. "relevance" means how well the answer shows the candidate can do THIS role. A correct but generic answer that never connects to the role cannot score above 60. The feedback sentence must say what this answer shows about their fit for "${S.role}".
 Apply the scoring rules strictly. Do not be modest or encouraging with scores.
 Return ONLY valid JSON:
 {"score":<0-100>,"communication":<0-100>,"relevance":<0-100>,"depth":<0-100>,"feedback":"<1 blunt honest sentence — what was wrong or right>","reaction":"<2-4 word natural interviewer reaction>","followUp":"<a probing follow-up question if answer was vague or incomplete, else empty string>"}`),
