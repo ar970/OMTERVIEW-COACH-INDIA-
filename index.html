@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CampusPrep — AI Interview Simulator</title>
+<title>CampusPrep — AI Interview Simulator (v21.11-c)</title>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..800;1,6..72,300..800&family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -582,6 +582,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
   <div class="iv-nav">
     <div style="display:flex;align-items:center;gap:.875rem">
       <span class="serif" style="font-size:1.125rem;font-style:italic;color:#9a3412">CampusPrep</span>
+      <span class="mono" style="font-size:.625rem;color:var(--outline)">v21.11-c</span>
       <div class="round-pill tech" id="iv-rpill"><div class="pill-dot"></div><span id="iv-rlbl">Technical Round</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:.875rem">
@@ -617,6 +618,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
       </div>
       <div>
         <p class="sb-label">🔒 Proctor Log</p>
+        <div class="mono" id="proc-status" style="font-size:.625rem;line-height:1.6;color:var(--on-surface-v);margin-bottom:.5rem"></div>
         <div id="iv-vlog"><div class="mono" style="font-size:.6875rem;color:var(--outline)">No violations</div></div>
       </div>
     </div>
@@ -720,6 +722,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cream); colo
     <div class="iv-right">
       <div class="iv-right-sec">
         <p class="sb-label">📷 Face Analysis</p>
+        <div class="mono" id="face-status" style="font-size:.625rem;line-height:1.5;color:var(--outline);margin-bottom:.5rem">Face tracker: waiting</div>
         <div class="face-pills">
           <div class="fpill" id="fp-eye"><span class="fpill-n" id="fp-e-n" style="color:var(--outline)">—</span><span class="fpill-l">Eye</span></div>
           <div class="fpill" id="fp-conf"><span class="fpill-n" id="fp-c-n" style="color:var(--outline)">—</span><span class="fpill-l">Conf.</span></div>
@@ -1266,12 +1269,24 @@ function speak(text,cb){
 
 function setWave(on){ document.getElementById('iv-wave').style.display=on?'flex':'none'; }
 
+const APP_VERSION='v21.11-c';
+console.log('CampusPrep',APP_VERSION);
+function setFaceStatus(txt,bad){ const el=document.getElementById('face-status'); if(el){ el.textContent=txt; el.style.color=bad?'var(--error)':'var(--outline)'; } }
+function setProcStatus(){
+  const el=document.getElementById('proc-status'); if(!el) return;
+  const fs=!document.fullscreenEnabled?'not supported on this browser':(document.fullscreenElement?'ON (in fullscreen)':'ON (not in fullscreen)');
+  el.textContent=`Fullscreen guard: ${fs}\nTab-switch guard: ON\nViolations: ${S.violCount}/${S.maxViol}`;
+  el.style.whiteSpace='pre-line';
+}
+
 // ── Proctoring ──
 // Browsers only allow fullscreen after a real click, so it can't be re-entered silently.
 // Leaving fullscreen locks the interview behind a "Return to fullscreen" screen instead.
 // One incident (e.g. Alt+Tab fires blur + tab-hidden + fullscreen-exit) counts as ONE violation.
 function setupProctoring(){
   S.lastViolAt=0; S.fsLocked=false;
+  document.addEventListener('fullscreenchange',setProcStatus);
+  setProcStatus();
   const active=()=>!S.terminated&&!S.reportStarted;
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden&&active()) logViol('Switched to another tab or window');
@@ -1351,6 +1366,7 @@ function logViol(reason){
   setTimeout(()=>ban.classList.remove('show'),5000);
   const c=document.getElementById('fs-lock-count');
   if(c) c.textContent=`Violations: ${S.violCount} / ${S.maxViol}`;
+  setProcStatus();
   return true;
 }
 
@@ -1616,17 +1632,19 @@ function loadFaceModel(){
         runningMode:'VIDEO',numFaces:3,minFaceDetectionConfidence:0.6,minFacePresenceConfidence:0.6,outputFaceBlendshapes:true});
       try{ FACE.lm=await v.FaceLandmarker.createFromOptions(fs,opts('GPU')); }
       catch(e){ FACE.lm=await v.FaceLandmarker.createFromOptions(fs,opts('CPU')); }
-    }catch(e){ FACE.failed=true; console.warn('Face analysis unavailable:',e); }
+    }catch(e){ FACE.failed=true; FACE.err=(e&&e.message)||String(e); console.warn('Face analysis unavailable:',e); }
   })();
   return FACE.loading;
 }
 
 async function startFaceTracking(){
-  if(!S.camActive) { setFacePillsStatus('—'); return; }
+  if(!S.camActive) { setFacePillsStatus('—'); setFaceStatus('Face tracker: OFF — camera not active',true); return; }
   FACE.win=faceNewWindow(); FACE.live=faceNewWindow();
   setFacePillsStatus('…');
+  setFaceStatus('Face tracker: loading model…');
   await loadFaceModel();
-  if(FACE.failed||!FACE.lm){ setFacePillsStatus('n/a'); return; }
+  if(FACE.failed||!FACE.lm){ setFacePillsStatus('n/a'); setFaceStatus('Face tracker FAILED: '+(FACE.err||'model did not load'),true); return; }
+  setFaceStatus('Face tracker: ON — starting…');
   if(S.reportStarted) return;
   clearInterval(FACE.loopId);
   FACE.loopId=setInterval(faceTick,500);
@@ -1641,10 +1659,12 @@ function stopFaceTracking(){
 function faceTick(){
   if(!FACE.lm||S.reportStarted||S.fsLocked) return;
   const vid=document.getElementById('iv-cvid');
-  if(!vid||vid.readyState<2||!vid.videoWidth) return;
+  if(!vid||vid.readyState<2||!vid.videoWidth){ setFaceStatus('Face tracker: waiting for camera video…',true); return; }
   const t=performance.now(); if(t<=FACE.lastT) return; FACE.lastT=t;
-  let r; try{ r=FACE.lm.detectForVideo(vid,t); }catch(e){ return; }
+  let r; try{ r=FACE.lm.detectForVideo(vid,t); }catch(e){ setFaceStatus('Face tracker error: '+e.message,true); return; }
   const smp=faceSample(r);
+  const nFaces=(r.faceLandmarks||[]).length;
+  setFaceStatus(`Face tracker: ON · ${nFaces===0?'no face seen':nFaces===1?'1 person':nFaces+' faces seen'+(smp.multi?'':' (2nd too small/far, ignored)')}`, nFaces!==1);
   checkMultiPerson(smp);
   if(FACE.win) faceAdd(FACE.win,smp);
   faceAdd(FACE.live,smp);
