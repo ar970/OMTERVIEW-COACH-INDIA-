@@ -1294,27 +1294,38 @@ function lockFullscreen(){
   S.fsLocked=true;
   S.fsMicWasOn=!!S.rec||!!_waitTTS;
   stopRec();
-  document.getElementById('fs-lock-msg').textContent='The interview is paused. Return to fullscreen to continue. Leaving fullscreen or switching tabs counts as a violation.';
+  document.getElementById('fs-lock-msg').textContent='The interview is paused. Click anywhere or press any key to go back to fullscreen. Leaving fullscreen or switching tabs counts as a violation.';
   document.getElementById('fs-lock-count').textContent=`Violations: ${S.violCount} / ${S.maxViol}`;
   document.getElementById('fs-lock').classList.add('show');
+  document.addEventListener('pointerdown',fsGestureRetry,true);
+  document.addEventListener('keydown',fsGestureRetry,true);
+}
+
+// Browsers only allow fullscreen from a click or key press, so the first one re-enters it
+function fsGestureRetry(e){
+  if(!S.fsLocked||e.key==='Escape') return;
+  returnToFullscreen();
 }
 
 function unlockFullscreen(){
   if(!S.fsLocked) return;
   S.fsLocked=false;
+  document.removeEventListener('pointerdown',fsGestureRetry,true);
+  document.removeEventListener('keydown',fsGestureRetry,true);
   document.getElementById('fs-lock').classList.remove('show');
   if(S.fsMicWasOn&&S.mode==='voice'&&!S.busy&&!S.terminated) startRec();
 }
 
 async function returnToFullscreen(){
-  try{ await document.documentElement.requestFullscreen(); }
+  if(document.fullscreenElement) return;
+  try{ await document.documentElement.requestFullscreen({navigationUI:'hide'}); }
   catch(e){ document.getElementById('fs-lock-msg').textContent='Your browser blocked fullscreen. Click the button again, or press F11.'; }
 }
 
 function logViol(reason){
-  if(S.terminated||S.reportStarted) return;
+  if(S.terminated||S.reportStarted) return false;
   const now=Date.now();
-  if(now-(S.lastViolAt||0)<3000) return;          // same incident, already counted
+  if(now-(S.lastViolAt||0)<3000) return false;    // same incident, already counted
   S.lastViolAt=now;
   S.violCount++;
   const t=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -1333,18 +1344,21 @@ function logViol(reason){
   d.textContent=`[${t}] #${S.violCount}: ${reason}`;
   vlog.insertBefore(d,vlog.firstChild);
 
-  if(S.violCount>=S.maxViol){ terminateInterview(reason); return; }
+  if(S.violCount>=S.maxViol){ terminateInterview(reason); return true; }
   const ban=document.getElementById('iv-vbanner');
   ban.textContent=`⚠ Violation ${S.violCount}/${S.maxViol}: ${reason}. ${S.maxViol-S.violCount===1?'One more ends the interview.':''}`;
   ban.classList.add('show');
   setTimeout(()=>ban.classList.remove('show'),5000);
   const c=document.getElementById('fs-lock-count');
   if(c) c.textContent=`Violations: ${S.violCount} / ${S.maxViol}`;
+  return true;
 }
 
 function terminateInterview(reason){
   S.terminated=true; S.reportStarted=true;
   S.fsLocked=false; document.getElementById('fs-lock').classList.remove('show');
+  document.removeEventListener('pointerdown',fsGestureRetry,true);
+  document.removeEventListener('keydown',fsGestureRetry,true);
   clearInterval(S.gTimerID); stopQTimer(); stopRec(); enableInput(false);
   window.speechSynthesis.cancel();
   const ban=document.getElementById('iv-vbanner');
@@ -1599,7 +1613,7 @@ function loadFaceModel(){
       const v=await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/vision_bundle.mjs`);
       const fs=await v.FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/wasm`);
       const opts=d=>({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:d},
-        runningMode:'VIDEO',numFaces:2,outputFaceBlendshapes:true});
+        runningMode:'VIDEO',numFaces:3,minFaceDetectionConfidence:0.6,minFacePresenceConfidence:0.6,outputFaceBlendshapes:true});
       try{ FACE.lm=await v.FaceLandmarker.createFromOptions(fs,opts('GPU')); }
       catch(e){ FACE.lm=await v.FaceLandmarker.createFromOptions(fs,opts('CPU')); }
     }catch(e){ FACE.failed=true; console.warn('Face analysis unavailable:',e); }
@@ -1631,6 +1645,7 @@ function faceTick(){
   const t=performance.now(); if(t<=FACE.lastT) return; FACE.lastT=t;
   let r; try{ r=FACE.lm.detectForVideo(vid,t); }catch(e){ return; }
   const smp=faceSample(r);
+  checkMultiPerson(smp);
   if(FACE.win) faceAdd(FACE.win,smp);
   faceAdd(FACE.live,smp);
   if(++FACE.ticks%2===0){ const sc=faceScore(FACE.live); if(sc) updateFacePills(sc); }  // live pills, every 1s
@@ -1642,6 +1657,7 @@ function faceSample(r){
   const faces=(r&&r.faceLandmarks)||[];
   if(!faces.length) return {present:false};
   const L=faces[0];
+  const others=faces.slice(1).filter(F=>Math.hypot(F[263].x-F[33].x,F[263].y-F[33].y)>=0.035);
   const cats=(r.faceBlendshapes&&r.faceBlendshapes[0]&&r.faceBlendshapes[0].categories)||[];
   const le=L[33], re=L[263], nose=L[1];                       // outer eye corners, nose tip
   const ed=Math.hypot(re.x-le.x,re.y-le.y)||1e-6;
@@ -1651,10 +1667,24 @@ function faceSample(r){
   const lookUp=(bs(cats,'eyeLookUpLeft')+bs(cats,'eyeLookUpRight'))/2;
   const down=lookDown>0.6;
   const away=Math.abs(yaw)>0.35||side>0.6||lookUp>0.65;
-  return {present:true,multi:faces.length>1,eye:!down&&!away,down,away,
+  return {present:true,multi:others.length>0,eye:!down&&!away,down,away,
     smile:(bs(cats,'mouthSmileLeft')+bs(cats,'mouthSmileRight'))/2,
     tension:(bs(cats,'browDownLeft')+bs(cats,'browDownRight'))/2,
     nx:nose.x,ny:nose.y,ed};
+}
+
+// 2+ people on camera: warn after ~1.5s, count a violation after ~3s.
+// After a violation, the same incident can't be counted again for 15s.
+function checkMultiPerson(smp){
+  if(S.terminated||S.reportStarted) return;
+  if(!smp.multi){ FACE.multiStreak=0; return; }
+  FACE.multiStreak=(FACE.multiStreak||0)+1;
+  if(Date.now()<(FACE.multiCooldownUntil||0)) return;
+  if(FACE.multiStreak===3) notify('⚠ More than one person detected on camera. Only you should be visible.');
+  if(FACE.multiStreak>=6&&logViol('More than one person on camera')){   // retries next frame if not counted yet
+    FACE.multiStreak=0;
+    FACE.multiCooldownUntil=Date.now()+15000;
+  }
 }
 
 function faceAdd(w,smp){
